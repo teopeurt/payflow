@@ -1,0 +1,264 @@
+
+import { createContext, useContext, useEffect, useState } from 'react';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
+import { AuthState, Profile, UserRole, Organization } from '@/types/auth';
+import { useNavigate } from 'react-router-dom';
+import { toast } from '@/components/ui/use-toast';
+
+interface AuthContextType extends AuthState {
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, firstName: string, lastName: string, role?: "admin" | "client", organizationName?: string, organizationId?: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  isAdmin: boolean;
+  isClient: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    session: null,
+    profile: null,
+    roles: [],
+    isLoading: true,
+    error: null
+  });
+  const navigate = useNavigate();
+
+  // Check for user role
+  const isAdmin = authState.roles.some(role => role.role === 'admin');
+  const isClient = authState.roles.some(role => role.role === 'client');
+
+  // Fetch user profile
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+
+      // Fetch user roles
+      const { data: roles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('*')
+        .eq('user_id', userId);
+      
+      if (rolesError) throw rolesError;
+      
+      setAuthState(prev => ({ 
+        ...prev, 
+        profile, 
+        roles: roles || [],
+        isLoading: false 
+      }));
+    } catch (error: any) {
+      console.error('Error fetching user profile:', error.message);
+      setAuthState(prev => ({ ...prev, error: error.message, isLoading: false }));
+    }
+  };
+
+  // Listen for auth changes
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setAuthState(prev => ({ 
+          ...prev, 
+          user: session?.user || null,
+          session 
+        }));
+
+        // Fetch user profile if user is logged in
+        if (session?.user) {
+          setTimeout(() => {
+            fetchUserProfile(session.user.id);
+          }, 0);
+        } else {
+          setAuthState(prev => ({ 
+            ...prev, 
+            profile: null,
+            roles: [],
+            isLoading: false 
+          }));
+        }
+
+        // Handle auth events
+        if (event === 'SIGNED_OUT') {
+          navigate('/auth');
+        }
+      }
+    );
+
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setAuthState(prev => ({ 
+        ...prev, 
+        user: session?.user || null,
+        session
+      }));
+
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+      } else {
+        setAuthState(prev => ({ ...prev, isLoading: false }));
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
+
+  // Sign in with email and password
+  const signIn = async (email: string, password: string) => {
+    try {
+      setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (error) throw error;
+      
+      navigate('/');
+      toast({
+        title: "Login successful",
+        description: "Welcome back!",
+      });
+    } catch (error: any) {
+      console.error('Sign in error:', error.message);
+      setAuthState(prev => ({ ...prev, isLoading: false, error: error.message }));
+      toast({
+        title: "Login failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Sign up with email and password
+  const signUp = async (
+    email: string, 
+    password: string, 
+    firstName: string, 
+    lastName: string, 
+    role: "admin" | "client" = 'client',
+    organizationName?: string,
+    organizationId?: string // Add organizationId parameter
+  ) => {
+    try {
+      setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+      
+      // First, sign up the user
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+          }
+        }
+      });
+      
+      if (signUpError) throw signUpError;
+      
+      // Make sure we have a user
+      if (!authData.user) {
+        throw new Error("User registration failed");
+      }
+      
+      // Insert the user role explicitly
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({ 
+          user_id: authData.user.id, 
+          role: role 
+        });
+      
+      if (roleError) throw roleError;
+      
+      // Handle organization - either use provided ID or create new
+      let finalOrgId = organizationId;
+      
+      // If we need to create a new organization and don't have an existing ID
+      if (organizationName && !finalOrgId && authData.user) {
+        // Create organization
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .insert({ name: organizationName })
+          .select('id')
+          .single();
+        
+        if (orgError) throw orgError;
+        
+        // Set the organization ID
+        if (orgData) {
+          finalOrgId = orgData.id;
+        }
+      }
+      
+      // Update user profile with organization id if we have one
+      if (finalOrgId && authData.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ organization_id: finalOrgId })
+          .eq('id', authData.user.id);
+        
+        if (profileError) throw profileError;
+      }
+      
+      toast({
+        title: "Registration successful",
+        description: "Please check your email for verification.",
+      });
+
+      navigate('/auth', { state: { registrationSuccess: true } });
+    } catch (error: any) {
+      console.error('Sign up error:', error.message);
+      setAuthState(prev => ({ ...prev, isLoading: false, error: error.message }));
+      toast({
+        title: "Registration failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Sign out
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "Logged out successfully"
+      });
+    } catch (error: any) {
+      console.error('Sign out error:', error.message);
+      toast({
+        title: "Error signing out",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const value = {
+    ...authState,
+    signIn,
+    signUp,
+    signOut,
+    isAdmin,
+    isClient
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}

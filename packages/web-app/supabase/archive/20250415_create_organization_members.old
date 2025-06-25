@@ -1,0 +1,96 @@
+-- Migration script for organization_members table
+-- Created: April 15, 2025
+
+-- Create organization_members table if it doesn't exist
+CREATE TABLE IF NOT EXISTS public.organization_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    organization_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE,
+    role TEXT NOT NULL DEFAULT 'member',
+    is_primary BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Add indexes for faster lookups
+CREATE INDEX IF NOT EXISTS idx_organization_members_user_id ON public.organization_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_organization_members_organization_id ON public.organization_members(organization_id);
+CREATE INDEX IF NOT EXISTS idx_organization_members_user_org ON public.organization_members(user_id, organization_id);
+
+-- Enable Row Level Security
+ALTER TABLE public.organization_members ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for organization_members
+CREATE POLICY "Users can view their own organization memberships"
+    ON public.organization_members
+    FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Organization admins can view all members"
+    ON public.organization_members
+    FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.organization_members
+            WHERE organization_id = organization_members.organization_id
+            AND user_id = auth.uid()
+            AND role = 'admin'
+        )
+    );
+
+-- Migrate existing profile-organization relationships
+INSERT INTO public.organization_members (user_id, organization_id, role, is_primary)
+SELECT 
+    p.id as user_id,
+    p.organization_id,
+    'admin' as role,  -- Assuming direct organization_id holders are admins
+    true as is_primary
+FROM 
+    public.profiles p
+WHERE 
+    p.organization_id IS NOT NULL
+    -- Avoid duplicates
+    AND NOT EXISTS (
+        SELECT 1 
+        FROM public.organization_members om 
+        WHERE om.user_id = p.id AND om.organization_id = p.organization_id
+    );
+
+-- Create function to maintain consistency between profiles and organization_members
+CREATE OR REPLACE FUNCTION public.maintain_profile_organization_consistency()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- If a user's primary organization is set/changed, update their profile
+    IF NEW.is_primary = true THEN
+        -- Update the profile organization_id to match the primary organization
+        UPDATE public.profiles
+        SET organization_id = NEW.organization_id
+        WHERE id = NEW.user_id;
+        
+        -- Ensure only one organization is primary for this user
+        UPDATE public.organization_members
+        SET is_primary = false
+        WHERE user_id = NEW.user_id 
+          AND id != NEW.id
+          AND is_primary = true;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger on organization_members
+DROP TRIGGER IF EXISTS organization_members_update_profile ON public.organization_members;
+CREATE TRIGGER organization_members_update_profile
+    AFTER INSERT OR UPDATE OF is_primary, organization_id
+    ON public.organization_members
+    FOR EACH ROW
+    EXECUTE FUNCTION public.maintain_profile_organization_consistency();
+
+-- Comment on tables and columns
+COMMENT ON TABLE public.organization_members IS 'Stores the relationship between users and organizations, including roles and primary organization status';
+COMMENT ON COLUMN public.organization_members.id IS 'Unique identifier for the membership record';
+COMMENT ON COLUMN public.organization_members.user_id IS 'Reference to the user (auth.users table)';
+COMMENT ON COLUMN public.organization_members.organization_id IS 'Reference to the organization';
+COMMENT ON COLUMN public.organization_members.role IS 'Role of user in the organization (member, admin, etc.)';
+COMMENT ON COLUMN public.organization_members.is_primary IS 'Whether this is the user''s primary organization';
+COMMENT ON COLUMN public.organization_members.created_at IS 'Timestamp when the record was created';
