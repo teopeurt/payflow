@@ -1,0 +1,36 @@
+# Use the official Golang image to create a build artifact.
+# This is known as a multi-stage build.
+FROM golang:1.21 as builder
+
+# Set the Current Working Directory inside the container
+WORKDIR /app
+
+# We want to populate the module cache based on the go.mod and go.sum files.
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy the source code into the container
+COPY . .
+
+# Download dependencies
+COPY ent ./ent
+RUN go mod tidy
+
+# Build the Go app
+# -o api will output a binary named 'api'
+# CGO_ENABLED=0 is used to build a statically linked binary
+RUN CGO_ENABLED=0 go build -o api ./
+
+# Start a new, smaller image
+FROM alpine:latest
+
+WORKDIR /root/
+
+# Copy the binary from the builder stage
+COPY --from=builder /app/api .
+
+# Expose port 3000 to the outside world
+EXPOSE 3000
+
+# Command to run the executable
+CMD ["./api"]
