@@ -53,7 +53,8 @@ export function AuthProvider({
   const fetchUserProfile = async (userId: string) => {
     try {
       const { data: profile, error } = await supabase
-        .from('app.profiles')
+        .schema('app')
+        .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
