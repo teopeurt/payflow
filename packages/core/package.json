@@ -9,7 +9,8 @@
     "./*": [
       "./src/*/index.ts",
       "./src/*.ts"
-    ]
+    ],
+    "./integrations/supabase/client": "./src/integrations/supabase/client.ts"
   },
   "dependencies": {
     "sst": "*",

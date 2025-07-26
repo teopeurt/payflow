@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './hooks/useAuth';
+import { AuthProvider, useAuth } from '@monorepo-template/core/auth';
 import LoginForm from './components/Auth/LoginForm';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
@@ -14,11 +14,11 @@ import Settings from './components/Settings/Settings';
 
 // Dashboard router component
 const DashboardRouter: React.FC = () => {
-  const { profile } = useAuth();
+  const { roles } = useAuth();
   
-  console.log('DashboardRouter - profile:', profile);
+  console.log('DashboardRouter - roles:', roles);
   
-  if (profile?.role === 'admin' || profile?.role === 'team_member') {
+  if (roles.some(role => role.role === 'admin' || role.role === 'team_member')) {
     console.log('Rendering AdminDashboard');
     return <AdminDashboard />;
   } else {
@@ -75,11 +75,11 @@ const MainLayout: React.FC = () => {
 
 // Protected route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useAuth();
   
-  console.log('ProtectedRoute - user:', user, 'loading:', loading);
+  console.log('ProtectedRoute - user:', user, 'loading:', isLoading);
   
-  if (loading) {
+  if (isLoading) {
     console.log('Still loading...');
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -99,36 +99,25 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 function App() {
-  const { user, loading, profile } = useAuth();
-
-  console.log('App render - user:', user, 'loading:', loading, 'profile:', profile);
-
-  if (loading) {
-    console.log('App is loading...');
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   return (
     <Router>
-      <Routes>
-        <Route 
-          path="/login" 
-          element={user ? <Navigate to="/dashboard" replace /> : <LoginForm />} 
-        />
-        
-        <Route 
-          path="/*" 
-          element={
-            <ProtectedRoute>
-              <MainLayout />
-            </ProtectedRoute>
-          } 
-        />
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          <Route 
+            path="/login" 
+            element={<LoginForm />} 
+          />
+          
+          <Route 
+            path="/*" 
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            } 
+          />
+        </Routes>
+      </AuthProvider>
     </Router>
   );
 }
