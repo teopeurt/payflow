@@ -1,5 +1,5 @@
 {
-  "name": "@monorepo-template/core",
+  "name": "@payflow/core",
   "type": "module",
   "version": "0.0.0",
   "scripts": {
@@ -13,6 +13,8 @@
     "./integrations/supabase/client": "./src/integrations/supabase/client.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "react": "^18.3.1",
     "sst": "*",
     "supabase": "^2.31.8"
   },

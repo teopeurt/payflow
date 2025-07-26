@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { getSupabase } from '../integrations/supabase/client';
-import { AuthState, Profile, UserRole, Organization } from './types';
+import { AuthState, Profile, OrganizationMember, Organization } from './types';
 
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<void>;
@@ -53,16 +53,16 @@ export function AuthProvider({
   const fetchUserProfile = async (userId: string) => {
     try {
       const { data: profile, error } = await supabase
-        .from('profiles')
+        .from('app.profiles')
         .select('*')
         .eq('id', userId)
         .single();
       
       if (error) throw error;
 
-      // Fetch user roles
+      // Fetch user roles from organization membership
       const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
+        .from('app.organization_members')
         .select('*')
         .eq('user_id', userId);
       
@@ -179,13 +179,7 @@ export function AuthProvider({
         throw new Error("User registration failed");
       }
       
-      // Insert the user role explicitly
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({ 
-          user_id: authData.user.id, 
-          role: role 
-        });
+      // Note: User role will be set when creating organization membership
       
       if (roleError) throw roleError;
       
@@ -196,7 +190,7 @@ export function AuthProvider({
       if (organizationName && !finalOrgId && authData.user) {
         // Create organization
         const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
+          .from('app.organizations')
           .insert({ name: organizationName })
           .select('id')
           .single();
@@ -209,14 +203,17 @@ export function AuthProvider({
         }
       }
       
-      // Update user profile with organization id if we have one
+      // Create organization membership if we have an organization
       if (finalOrgId && authData.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ organization_id: finalOrgId })
-          .eq('id', authData.user.id);
+        const { error: memberError } = await supabase
+          .from('app.organization_members')
+          .insert({ 
+            user_id: authData.user.id,
+            organization_id: finalOrgId,
+            role: role
+          });
         
-        if (profileError) throw profileError;
+        if (memberError) throw memberError;
       }
       
       if (onSignUpSuccess && authData.user) onSignUpSuccess(authData.user);
@@ -255,7 +252,5 @@ export function useAuth() {
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context;
-}
   return context;
 }
