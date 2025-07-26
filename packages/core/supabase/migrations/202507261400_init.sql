@@ -1094,18 +1094,18 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.calculate_next_generation_date(
-    current_date date,
+    input_date date,
     frequency public.recurring_frequency_type
 ) RETURNS date
 LANGUAGE sql
 IMMUTABLE
 AS $$
     SELECT CASE frequency
-        WHEN 'daily' THEN current_date + interval '1 day'
-        WHEN 'weekly' THEN current_date + interval '1 week'
-        WHEN 'monthly' THEN current_date + interval '1 month'
-        WHEN 'quarterly' THEN current_date + interval '3 months'
-        WHEN 'yearly' THEN current_date + interval '1 year'
+        WHEN 'daily' THEN input_date + interval '1 day'
+        WHEN 'weekly' THEN input_date + interval '1 week'
+        WHEN 'monthly' THEN input_date + interval '1 month'
+        WHEN 'quarterly' THEN input_date + interval '3 months'
+        WHEN 'yearly' THEN input_date + interval '1 year'
     END::date;
 $$;
 
@@ -1287,7 +1287,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role public.app_role) returns boolean
     stable
     security definer
-    SET search_path = ""
+    SET search_path = public
     language sql
 as
 $$
@@ -1302,7 +1302,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.belongs_to_organization(_user_id uuid, _org_id uuid) returns boolean
     stable
     security definer
-    SET search_path = ""
+    SET search_path = public
     language sql
 as
 $$
