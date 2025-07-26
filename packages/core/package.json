@@ -7,7 +7,9 @@
   },
   "exports": {
     "./*": [
+      "./src/*/index.tsx",
       "./src/*/index.ts",
+      "./src/*.tsx",
       "./src/*.ts"
     ],
     "./integrations/supabase/client": "./src/integrations/supabase/client.ts"
