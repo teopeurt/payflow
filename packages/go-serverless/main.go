@@ -1,7 +1,7 @@
 package main
 
 import (
-		"context"
+	"context"
 	"log"
 	"os"
 
@@ -46,6 +46,27 @@ func main() {
 	// Client routes
 	app.Get("/api/v1/clients", func(c *fiber.Ctx) error {
 		return handlers.ListClients(c, client)
+	})
+
+	// Recurring invoice template routes
+	v1 := app.Group("/api/v1")
+	v1.Get("/recurring-templates", func(c *fiber.Ctx) error {
+		return handlers.ListRecurringTemplates(c, client)
+	})
+	v1.Get("/recurring-templates/:id", func(c *fiber.Ctx) error {
+		return handlers.GetRecurringTemplate(c, client)
+	})
+	v1.Post("/recurring-templates", func(c *fiber.Ctx) error {
+		return handlers.CreateRecurringTemplate(c, client)
+	})
+	v1.Put("/recurring-templates/:id", func(c *fiber.Ctx) error {
+		return handlers.UpdateRecurringTemplate(c, client)
+	})
+	v1.Delete("/recurring-templates/:id", func(c *fiber.Ctx) error {
+		return handlers.DeleteRecurringTemplate(c, client)
+	})
+	v1.Post("/recurring-templates/:id/generate", func(c *fiber.Ctx) error {
+		return handlers.GenerateRecurringInvoice(c, client)
 	})
 
 	log.Fatal(app.Listen(":3000"))

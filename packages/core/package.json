@@ -12,7 +12,8 @@
     ]
   },
   "dependencies": {
-    "sst": "*"
+    "sst": "*",
+    "supabase": "^2.31.8"
   },
   "devDependencies": {
     "vitest": "^2"

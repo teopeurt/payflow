@@ -1,6 +1,10 @@
 # Change these variables as necessary.
-MAIN_PACKAGE_PATH := ./cmd/cli/main.go
+MAIN_PACKAGE_PATH := ./main.go
+SCHEDULER_PACKAGE_PATH := ./cmd/scheduler/main.go
+CRON_PACKAGE_PATH := ./cmd/cron/main.go
 BINARY_NAME := payflower
+SCHEDULER_BINARY := scheduler
+CRON_BINARY := cron
 
 # ==================================================================================== #
 # HELPERS
@@ -56,16 +60,45 @@ test/cover:
 	go test -v -race -buildvcs -coverprofile=/tmp/coverage.out ./...
 	go tool cover -html=/tmp/coverage.out
 
+## generate: generate ent code
+.PHONY: generate
+generate:
+	go generate ./ent
+
 ## build: build the application
 .PHONY: build
-build:
+build: generate
 	# Include additional build steps, like TypeScript, SCSS or Tailwind compilation here...
 	go build -o=/tmp/bin/${BINARY_NAME} ${MAIN_PACKAGE_PATH}
 
-## run: run the  application
+## build/scheduler: build the scheduler application
+.PHONY: build/scheduler
+build/scheduler: generate
+	go build -o=/tmp/bin/${SCHEDULER_BINARY} ${SCHEDULER_PACKAGE_PATH}
+
+## build/cron: build the cron application
+.PHONY: build/cron
+build/cron: generate
+	go build -o=/tmp/bin/${CRON_BINARY} ${CRON_PACKAGE_PATH}
+
+## build/all: build all applications
+.PHONY: build/all
+build/all: build build/scheduler build/cron
+
+## run: run the main API application
 .PHONY: run
 run: build
 	/tmp/bin/${BINARY_NAME}
+
+## run/scheduler: run the scheduler once
+.PHONY: run/scheduler
+run/scheduler: build/scheduler
+	/tmp/bin/${SCHEDULER_BINARY}
+
+## run/cron: run the continuous cron scheduler
+.PHONY: run/cron
+run/cron: build/cron
+	/tmp/bin/${CRON_BINARY}
 
 ## run/live: run the application with reloading on file changes
 .PHONY: run/live

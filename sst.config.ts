@@ -12,9 +12,15 @@ export default $config({
   async run() {
     const storage = await import("./infra/storage");
     await import("./infra/api");
+    const cron = await import("./infra/cron");
 
     return {
       MyBucket: storage.bucket.name,
+      RecurringInvoiceProcessor: cron.recurringInvoiceProcessor.arn,
+      RecurringInvoiceCron: cron.recurringInvoiceCron.name,
+      ManualProcessorUrl: cron.manualInvoiceProcessor.url,
+      RecurringInvoiceTask: cron.recurringInvoiceTask.service,
+      RecurringInvoiceBatch: cron.recurringInvoiceBatch.name,
     };
   },
 });
