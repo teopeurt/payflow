@@ -55,7 +55,7 @@ export function AuthProvider({
       const { data: profile, error } = await supabase
         .schema('app')
         .from('profiles')
-        .select('*')
+        .select('id, email, full_name, profile_picture_url, role, company_name, address, website_url, notes, client_status, source, created_at, updated_at, last_login, organization_id')
         .eq('id', userId)
         .single();
       
