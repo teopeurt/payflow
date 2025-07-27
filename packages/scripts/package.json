@@ -4,7 +4,9 @@
   "type": "module",
   "dependencies": {
     "@payflow/core": "workspace:*",
-    "sst": "*"
+    "install": "^0.13.0",
+    "sst": "*",
+    "uuid": "^11.1.0"
   },
   "scripts": {
     "shell": "sst shell tsx"

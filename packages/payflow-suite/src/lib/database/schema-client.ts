@@ -1,5 +1,6 @@
 // import { getSupabase } from '@payflow/core/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import {getSupabase} from "@payflow/core/integrations/supabase/client";
 
 type AppSchema = Database['app']['Tables'];
 type FinanceSchema = Database['finance']['Tables'];
@@ -7,7 +8,9 @@ type MessagingSchema = Database['messaging']['Tables'];
 type AuditSchema = Database['audit']['Tables'];
 
 export class SchemaClient {
-  constructor(private client = getSupabase()) {}
+  private get client() {
+    return getSupabase();
+  }
 
   get app() {
     return {

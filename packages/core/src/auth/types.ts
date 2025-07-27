@@ -24,11 +24,8 @@ export interface OrganizationMember {
   user_id: string;
   organization_id: string;
   role: 'admin' | 'client' | 'team_member';
-  invited_by: string | null;
-  invited_at: string | null;
-  joined_at: string | null;
+  is_primary: boolean;
   created_at: string;
-  updated_at: string;
 }
 
 export interface Document {

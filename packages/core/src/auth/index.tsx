@@ -65,7 +65,7 @@ export function AuthProvider({
       const { data: roles, error: rolesError } = await supabase
           .schema('app')
           .from('organization_members')
-          .select('*')
+          .select('id, user_id, organization_id, role, is_primary, created_at')
           .eq('user_id', userId);
       
       if (rolesError) throw rolesError;
@@ -183,8 +183,6 @@ export function AuthProvider({
       
       // Note: User role will be set when creating organization membership
       
-      if (roleError) throw roleError;
-      
       // Handle organization - either use provided ID or create new
       let finalOrgId = organizationId;
       
@@ -192,7 +190,7 @@ export function AuthProvider({
       if (organizationName && !finalOrgId && authData.user) {
         // Create organization
         const { data: orgData, error: orgError } = await supabase
-          .from('app.organizations')
+            .schema('app').from('organizations')
           .insert({ name: organizationName })
           .select('id')
           .single();
@@ -208,7 +206,7 @@ export function AuthProvider({
       // Create organization membership if we have an organization
       if (finalOrgId && authData.user) {
         const { error: memberError } = await supabase
-          .from('app.organization_members')
+            .schema('app').from('organization_members')
           .insert({ 
             user_id: authData.user.id,
             organization_id: finalOrgId,
