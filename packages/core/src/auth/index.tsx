@@ -63,9 +63,10 @@ export function AuthProvider({
 
       // Fetch user roles from organization membership
       const { data: roles, error: rolesError } = await supabase
-        .from('app.organization_members')
-        .select('*')
-        .eq('user_id', userId);
+          .schema('app')
+          .from('organization_members')
+          .select('*')
+          .eq('user_id', userId);
       
       if (rolesError) throw rolesError;
       
