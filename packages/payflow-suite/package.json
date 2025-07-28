@@ -8,7 +8,8 @@
     "build": "bunx vite build",
     "build:dev": "bunx vite build --mode development",
     "lint": "eslint .",
-    "preview": "bunx vite preview"
+    "preview": "bunx vite preview",
+    "test": "bun scripts/run-tests.js"
   },
   "dependencies": {
     "@payflow/core": "workspace:*",
@@ -70,6 +71,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
+    "dotenv": "^16.4.5",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^22.5.5",
     "@types/react": "^18.3.3",
