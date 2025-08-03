@@ -28,7 +28,7 @@ export type RecurringInvoiceHistory = FinanceTables['recurring_invoice_history']
 
 export type MessageThread = MessagingTables['message_threads']['Row'];
 export type Message = MessagingTables['messages']['Row'];
-export type MessageParticipant = MessagingTables['message_participants']['Row'];
+export type ThreadParticipant = MessagingTables['thread_participants']['Row'];
 
 export type AuditLog = AuditTables['logs']['Row'];
 

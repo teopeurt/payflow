@@ -75,7 +75,7 @@ const mockSchemaClient = {
     message_threads: () => supabase.schema('messaging').from('message_threads'),
     messages: () => supabase.schema('messaging').from('messages'),
     message_participants: () => supabase.schema('messaging').from('message_participants'),
-    message_read_status: () => supabase.schema('messaging').from('message_read_status'),
+    message_recipients: () => supabase.schema('messaging').from('message_recipients'),
     message_attachments: () => supabase.schema('messaging').from('message_attachments')
   },
   audit: {

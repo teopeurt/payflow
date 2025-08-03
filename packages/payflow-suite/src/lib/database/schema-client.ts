@@ -12,6 +12,16 @@ export class SchemaClient {
     return getSupabase();
   }
 
+  // Public method to access RPC functions
+  rpc(functionName: string, params?: any) {
+    return this.client.rpc(functionName, params);
+  }
+
+  // Public method to access raw tables (for system/information schema queries)
+  from(tableName: string) {
+    return this.client.from(tableName);
+  }
+
   get app() {
     return {
       profiles: () => this.client.schema('app').from('profiles'),
@@ -45,7 +55,7 @@ export class SchemaClient {
     return {
       message_threads: () => this.client.schema('messaging').from('message_threads'),
       messages: () => this.client.schema('messaging').from('messages'),
-      message_participants: () => this.client.schema('messaging').from('message_participants'),
+      thread_participants: () => this.client.schema('messaging').from('thread_participants'),
       message_recipients: () => this.client.schema('messaging').from('message_recipients'),
     };
   }

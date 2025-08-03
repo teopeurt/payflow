@@ -37,9 +37,9 @@ export class AuditComplianceTest {
         .organizations()
         .insert({
           name: 'Audit Test Organization',
-          email: 'audit-test@example.com',
-          phone: '555-AUDIT',
-          address: '123 Audit Street'
+          company_email: 'audit-test@example.com',
+          company_phone: '555-AUDIT',
+          company_address: '123 Audit Street'
         })
         .select('*')
         .single();
@@ -154,7 +154,7 @@ export class AuditComplianceTest {
       // Test 2: Verify financial data access is logged
       const { data: invoices, error: invoiceError } = await schemaClient.finance
         .invoices()
-        .select('id, invoice_number, amount')
+        .select('id, invoice_number, total_amount')
         .limit(3);
 
       if (invoiceError) throw new Error(`Invoice access failed: ${invoiceError.message}`);

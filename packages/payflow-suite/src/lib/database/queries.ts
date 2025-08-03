@@ -91,7 +91,7 @@ export class DatabaseQueries {
   async getMessageThreadsByUser(userId: string) {
     // First get the thread IDs for this user
     const { data: threadIds, error: threadIdsError } = await this.db.messaging
-      .message_participants()
+      .thread_participants()
       .select('thread_id')
       .eq('user_id', userId);
 
@@ -107,7 +107,7 @@ export class DatabaseQueries {
       .select(`
         *,
         messages(*),
-        participants:message_participants(*)
+        participants:thread_participants(*)
       `)
       .in('id', threadIds.map(t => t.thread_id));
 

@@ -11,9 +11,23 @@ export interface DataIntegrityTestResult {
 
 export class DataIntegrityTest {
   private testResults: DataIntegrityTestResult[] = [];
+  private testUserId: string | null = null;
 
   async runAllTests(): Promise<DataIntegrityTestResult[]> {
     this.testResults = [];
+
+    // Get a valid test user ID
+    const { data: testUser } = await schemaClient.app
+      .profiles()
+      .select('id')
+      .eq('email', 'admin@example.com')
+      .single();
+    
+    if (!testUser) {
+      throw new Error('Test user not found. Please run seed-users.js first.');
+    }
+    
+    this.testUserId = testUser.id;
 
     await this.testForeignKeyConstraints();
     await this.testRLSPolicyEnforcement();
@@ -34,9 +48,9 @@ export class DataIntegrityTest {
         .organizations()
         .insert({
           name: 'FK Test Org',
-          email: 'fktest@example.com',
-          phone: '555-0123',
-          address: '123 Test St'
+          company_email: 'fktest@example.com',
+          company_phone: '555-0123',
+          company_address: '123 Test St'
         })
         .select('*')
         .single();
@@ -59,7 +73,7 @@ export class DataIntegrityTest {
           organization_id: testOrg.id,
           status: 'active',
           start_date: new Date().toISOString(),
-          created_by: 'test-user-id'
+          created_by: this.testUserId!
         })
         .select('*')
         .single();
@@ -82,7 +96,7 @@ export class DataIntegrityTest {
           organization_id: '00000000-0000-0000-0000-000000000000',
           status: 'active',
           start_date: new Date().toISOString(),
-          created_by: 'test-user-id'
+          created_by: this.testUserId!
         });
 
       this.testResults.push({
@@ -124,7 +138,7 @@ export class DataIntegrityTest {
 
     try {
       // Test 1: Verify RLS is enabled on critical tables
-      const { data: rlsStatus, error: rlsError } = await schemaClient.client
+      const { data: rlsStatus, error: rlsError } = await schemaClient
         .rpc('check_rls_enabled', {
           schema_name: 'app',
           table_names: ['profiles', 'projects', 'organizations']
@@ -140,7 +154,7 @@ export class DataIntegrityTest {
       });
 
       // Test 2: Verify finance schema RLS
-      const { data: financeRLS, error: financeRLSError } = await schemaClient.client
+      const { data: financeRLS, error: financeRLSError } = await schemaClient
         .rpc('check_rls_enabled', {
           schema_name: 'finance',
           table_names: ['invoices', 'payments', 'invoice_items']
@@ -157,7 +171,7 @@ export class DataIntegrityTest {
 
       // Test 3: Test policy effectiveness with simulated user context
       // Note: This would require actual user context, so we'll test the structure exists
-      const { data: policies, error: policyError } = await schemaClient.client
+      const { data: policies, error: policyError } = await schemaClient
         .from('information_schema.policies')
         .select('*')
         .in('schemaname', ['app', 'finance', 'messaging']);
@@ -187,7 +201,7 @@ export class DataIntegrityTest {
 
     try {
       // Test 1: Check invoice amounts match invoice_items totals
-      const { data: invoiceConsistency, error: invoiceError } = await schemaClient.client
+      const { data: invoiceConsistency, error: invoiceError } = await schemaClient
         .rpc('validate_invoice_amounts');
 
       if (invoiceError) throw new Error(`Invoice consistency check failed: ${invoiceError.message}`);
@@ -201,7 +215,7 @@ export class DataIntegrityTest {
       });
 
       // Test 2: Check payment amounts don't exceed invoice amounts
-      const { data: paymentConsistency, error: paymentError } = await schemaClient.client
+      const { data: paymentConsistency, error: paymentError } = await schemaClient
         .rpc('validate_payment_amounts');
 
       if (paymentError) throw new Error(`Payment consistency check failed: ${paymentError.message}`);
@@ -217,15 +231,11 @@ export class DataIntegrityTest {
       // Test 3: Check organization membership consistency
       const { data: membershipConsistency, error: membershipError } = await schemaClient.app
         .organization_members()
-        .select(`
-          id,
-          organization:organizations(id),
-          user:profiles(id)
-        `);
+        .select('id, organization_id, user_id');
 
       if (membershipError) throw new Error(`Membership consistency check failed: ${membershipError.message}`);
 
-      const invalidMemberships = membershipConsistency?.filter(m => !m.organization || !m.user) || [];
+      const invalidMemberships = membershipConsistency?.filter(m => !m.organization_id || !m.user_id) || [];
 
       this.testResults.push({
         test: testName,
@@ -341,7 +351,7 @@ export class DataIntegrityTest {
     try {
       // Test 1: Verify all expected schemas exist
       const expectedSchemas = ['app', 'finance', 'messaging', 'audit'];
-      const { data: schemas, error: schemaError } = await schemaClient.client
+      const { data: schemas, error: schemaError } = await schemaClient
         .from('information_schema.schemata')
         .select('schema_name')
         .in('schema_name', expectedSchemas);
@@ -363,12 +373,12 @@ export class DataIntegrityTest {
       const criticalTables = {
         app: ['profiles', 'organizations', 'projects', 'calendar_events'],
         finance: ['invoices', 'invoice_items', 'payments'],
-        messaging: ['message_threads', 'messages', 'message_participants'],
+        messaging: ['message_threads', 'messages', 'thread_participants'],
         audit: ['audit_logs']
       };
 
       for (const [schema, tables] of Object.entries(criticalTables)) {
-        const { data: schemaTables, error: tableError } = await schemaClient.client
+        const { data: schemaTables, error: tableError } = await schemaClient
           .from('information_schema.tables')
           .select('table_name')
           .eq('table_schema', schema)

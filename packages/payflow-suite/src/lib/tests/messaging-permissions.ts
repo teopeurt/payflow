@@ -19,6 +19,9 @@ export class MessagingPermissionsTest {
   async runAllTests(): Promise<TestResult[]> {
     const results: TestResult[] = [];
 
+    // Debug test: Check table structure
+    results.push(await this.testTableStructure());
+
     // Test 1: User can access their own threads
     results.push(await this.testThreadAccess());
 
@@ -34,11 +37,41 @@ export class MessagingPermissionsTest {
     return results;
   }
 
+  private async testTableStructure(): Promise<TestResult> {
+    try {
+      // Simple query to see what happens
+      const { data, error } = await schemaClient.messaging
+        .message_threads()
+        .select('id, subject, created_by, created_at, updated_at, project_id')
+        .limit(1);
+
+      if (error) {
+        return {
+          test: 'Table Structure Check',
+          passed: false,
+          error: `Database error: ${error.message}`
+        };
+      }
+
+      return {
+        test: 'Table Structure Check',
+        passed: true,
+        error: `Available columns confirmed: id, subject, created_by, created_at, updated_at, project_id`
+      };
+    } catch (error) {
+      return {
+        test: 'Table Structure Check',
+        passed: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
   private async testThreadAccess(): Promise<TestResult> {
     try {
       const { data, error } = await schemaClient.messaging
         .message_threads()
-        .select('*')
+        .select('id, subject, created_by, created_at, updated_at, project_id')
         .limit(1);
 
       if (error) throw error;
@@ -152,6 +185,8 @@ export class MessagingPermissionsTest {
           user_id: this.userId,
           read_status: true,
           read_at: new Date().toISOString()
+        }, {
+          onConflict: 'message_id,user_id'
         });
 
       if (error) throw error;

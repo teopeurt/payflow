@@ -302,14 +302,23 @@ export class E2EWorkflowTest {
     try {
       // Step 1: Create message thread
       const startTime = Date.now();
+      
+      // Get a project to associate with the thread
+      const { data: projects } = await schemaClient.app
+        .projects()
+        .select('id')
+        .limit(1);
+
+      const projectId = projects?.[0]?.id;
+
       const { data: newThread, error: threadError } = await schemaClient.messaging
         .message_threads()
         .insert({
           subject: `E2E Test Thread ${Date.now()}`,
           created_by: this.userId,
-          status: 'active'
+          project_id: projectId
         })
-        .select('*')
+        .select('id, subject, created_by, created_at, updated_at, project_id')
         .single();
 
       if (threadError) throw threadError;
@@ -350,7 +359,7 @@ export class E2EWorkflowTest {
       const { error: readError } = await schemaClient.messaging
         .message_recipients()
         .upsert({
-          message_id: newThread.id,
+          message_id: newMessage.id,
           user_id: this.userId,
           read_status: true,
           read_at: new Date().toISOString()
@@ -358,15 +367,26 @@ export class E2EWorkflowTest {
 
       if (readError) throw readError;
 
+      // Verify read status was set
+      const { data: readStatus, error: verifyError } = await schemaClient.messaging
+        .message_recipients()
+        .select('read_status')
+        .eq('message_id', newMessage.id)
+        .eq('user_id', this.userId)
+        .single();
+
+      if (verifyError) throw verifyError;
+
       results.push({
         workflow: workflowName,
         step: 'Mark message as read',
-        passed: true,
-        details: 'Message marked as read',
+        passed: readStatus?.read_status === true,
+        details: `Message read status: ${readStatus?.read_status}`,
         duration: Date.now() - step3Start
       });
 
-      // Cleanup
+      // Cleanup - delete in correct order to respect foreign key constraints
+      await schemaClient.messaging.message_recipients().delete().eq('message_id', newMessage.id);
       await schemaClient.messaging.messages().delete().eq('id', newMessage.id);
       await schemaClient.messaging.message_threads().delete().eq('id', newThread.id);
 

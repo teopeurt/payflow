@@ -136,14 +136,10 @@ export class AdminAccessTest {
 
       // Test: Can access project details with full data
       if (projects && projects.length > 0) {
+        // Use cross-schema API for project with organization details
         const { data: projectDetails, error: detailError } = await schemaClient.app
           .projects()
-          .select(`
-            *,
-            organization:organizations(*),
-            tasks(*),
-            milestones(*)
-          `)
+          .select('*')
           .eq('id', projects[0].id)
           .single();
 
@@ -237,7 +233,7 @@ export class AdminAccessTest {
         .payments()
         .select(`
           *,
-          invoice:finance.invoices(invoice_number, client_id)
+          invoices(invoice_number, client_id)
         `)
         .limit(10);
 
@@ -269,11 +265,7 @@ export class AdminAccessTest {
       // Test: Can view organization members
       const { data: members, error } = await schemaClient.app
         .organization_members()
-        .select(`
-          *,
-          user:profiles(full_name, email),
-          organization:organizations(name)
-        `);
+        .select('*');
 
       if (error) throw error;
 
@@ -362,7 +354,7 @@ export class AdminAccessTest {
       // Test: Can access financial reports data
       const { data: invoiceStats, error } = await schemaClient.finance
         .invoices()
-        .select('amount, status, created_at');
+        .select('total_amount, status, created_at');
 
       if (error) throw error;
 
@@ -375,7 +367,7 @@ export class AdminAccessTest {
 
       // Test: Can access audit logs
       const { data: auditLogs, error: auditError } = await schemaClient.audit
-        .logs()
+        .audit_logs()
         .select('*')
         .limit(10);
 

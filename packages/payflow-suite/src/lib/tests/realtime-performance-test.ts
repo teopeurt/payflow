@@ -13,9 +13,23 @@ export interface PerformanceTestResult {
 
 export class RealtimePerformanceTest {
   private testResults: PerformanceTestResult[] = [];
+  private testUserId: string | null = null;
 
   async runAllTests(): Promise<PerformanceTestResult[]> {
     this.testResults = [];
+
+    // Get a valid test user ID
+    const { data: testUser } = await schemaClient.app
+      .profiles()
+      .select('id')
+      .eq('email', 'admin@example.com')
+      .single();
+    
+    if (!testUser) {
+      throw new Error('Test user not found. Please run seed-users.js first.');
+    }
+    
+    this.testUserId = testUser.id;
 
     await this.testRealtimeMessageLatency();
     await this.testDatabaseQueryPerformance();
@@ -35,8 +49,7 @@ export class RealtimePerformanceTest {
         .message_threads()
         .insert({
           subject: 'Performance Test Thread',
-          created_by: 'test-user-id',
-          status: 'active'
+          created_by: this.testUserId!
         })
         .select('*')
         .single();
@@ -54,7 +67,7 @@ export class RealtimePerformanceTest {
           .messages()
           .insert({
             thread_id: thread.id,
-            sender_id: 'test-user-id',
+            sender_id: this.testUserId!,
             content: `Performance test message ${i + 1}`,
             message_type: 'text'
           });
@@ -120,9 +133,7 @@ export class RealtimePerformanceTest {
           query: () => schemaClient.finance.invoices()
             .select(`
               *,
-              organization:organizations(*),
-              project:projects(*),
-              items:invoice_items(*)
+              invoice_items(*)
             `)
             .limit(10),
           threshold: 800
@@ -131,9 +142,9 @@ export class RealtimePerformanceTest {
           name: 'Message Thread with Messages',
           query: () => schemaClient.messaging.message_threads()
             .select(`
-              *,
+              id, subject, created_by, created_at, updated_at, project_id,
               messages(*),
-              participants:message_participants(*)
+              participants:thread_participants(*)
             `)
             .limit(5),
           threshold: 600
@@ -288,8 +299,7 @@ export class RealtimePerformanceTest {
       const batchSize = 50;
       const testData = Array.from({ length: batchSize }, (_, i) => ({
         subject: `Throughput test thread ${i}`,
-        created_by: 'test-user-id',
-        status: 'active' as const
+        created_by: this.testUserId!
       }));
 
       const startTime = performance.now();
@@ -309,7 +319,7 @@ export class RealtimePerformanceTest {
       
       const { data: readThreads, error: readError } = await schemaClient.messaging
         .message_threads()
-        .select('*')
+        .select('id, subject, created_by, created_at, updated_at, project_id')
         .in('id', insertedThreads!.map(t => t.id));
 
       if (readError) throw readError;
