@@ -848,12 +848,12 @@ CREATE POLICY "Admins and team members can create projects" ON "app"."projects" 
 CREATE POLICY "Users can read projects they're assigned to or are clients of" ON "app"."projects" AS PERMISSIVE FOR SELECT TO "authenticated";--> statement-breakpoint
 CREATE POLICY "Project team members and admins can update projects" ON "app"."projects" AS PERMISSIVE FOR UPDATE TO "authenticated";--> statement-breakpoint
 CREATE POLICY "Admins can delete projects" ON "app"."projects" AS PERMISSIVE FOR DELETE TO "authenticated";--> statement-breakpoint
-CREATE POLICY "Users can read project team assignments" ON "app"."project_team" AS PERMISSIVE FOR SELECT TO "authenticated" USING (((user_id = auth.uid()) OR (project_id IN ( SELECT DISTINCT pt2.project_id
+CREATE POLICY "Project team members and admins can manage project team" ON "app"."project_team" AS PERMISSIVE FOR ALL TO "authenticated" USING (((project_id IN ( SELECT DISTINCT pt2.project_id
    FROM app.project_team pt2
   WHERE (pt2.user_id = auth.uid()))) OR (EXISTS ( SELECT 1
    FROM app.profiles
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))));--> statement-breakpoint
-CREATE POLICY "Project team members and admins can manage project team" ON "app"."project_team" AS PERMISSIVE FOR ALL TO "authenticated";--> statement-breakpoint
+CREATE POLICY "Users can read project team assignments" ON "app"."project_team" AS PERMISSIVE FOR SELECT TO "authenticated";--> statement-breakpoint
 CREATE POLICY "Users can read tasks from their projects" ON "app"."tasks" AS PERMISSIVE FOR SELECT TO "authenticated" USING (((project_id IN ( SELECT project_team.project_id
    FROM app.project_team
   WHERE (project_team.user_id = auth.uid()))) OR (EXISTS ( SELECT 1

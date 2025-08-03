@@ -2985,19 +2985,19 @@
       },
       "checkConstraints": {},
       "policies": {
-        "Users can read project team assignments": {
-          "name": "Users can read project team assignments",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
-          "using": "((user_id = auth.uid()) OR (project_id IN ( SELECT DISTINCT pt2.project_id\n   FROM app.project_team pt2\n  WHERE (pt2.user_id = auth.uid()))) OR (EXISTS ( SELECT 1\n   FROM app.profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text)))))"
-        },
         "Project team members and admins can manage project team": {
           "name": "Project team members and admins can manage project team",
           "as": "PERMISSIVE",
           "for": "ALL",
+          "to": [
+            "authenticated"
+          ],
+          "using": "((project_id IN ( SELECT DISTINCT pt2.project_id\n   FROM app.project_team pt2\n  WHERE (pt2.user_id = auth.uid()))) OR (EXISTS ( SELECT 1\n   FROM app.profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text)))))"
+        },
+        "Users can read project team assignments": {
+          "name": "Users can read project team assignments",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
           "to": [
             "authenticated"
           ]
