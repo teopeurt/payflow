@@ -313,31 +313,122 @@ export class RLSAccessControlTest {
         details: `Profile access: ${profile ? 'SUCCESS' : 'FAIL'}`
       });
 
+      // Test: Check organization memberships
+      const { data: allMemberships, error: membershipsError } = await schemaClient.app
+        .organization_members()
+        .select('role, organization_id')
+        .eq('user_id', this.userId);
+
+      if (membershipsError) {
+        results.push({
+          category: 'Profile',
+          test: 'Organization memberships access',
+          passed: false,
+          error: membershipsError.message
+        });
+      } else {
+        results.push({
+          category: 'Profile',
+          test: 'Organization memberships access',
+          passed: true,
+          details: `Found ${allMemberships?.length || 0} organization memberships`
+        });
+        
+        // Check if the organization ID passed to the test matches any of the user's memberships
+        if (allMemberships && allMemberships.length > 0) {
+          const hasMatchingOrg = this.organizationId ? 
+            allMemberships.some(m => m.organization_id === this.organizationId) : 
+            false;
+          
+          results.push({
+            category: 'Profile',
+            test: 'Organization ID validation',
+            passed: !this.organizationId || hasMatchingOrg,
+            details: `Test org ID: ${this.organizationId || 'none'}, User orgs: ${allMemberships.map(m => m.organization_id).join(', ')}`
+          });
+        }
+      }
+
       // Test: Role verification - get role from organization_members table
       if (profile) {
         // Get user's role from organization_members table
-        const { data: memberData, error: memberError } = await schemaClient.app
+        let query = schemaClient.app
           .organization_members()
-          .select('role')
-          .eq('user_id', this.userId)
-          .single();
+          .select('role, organization_id')
+          .eq('user_id', this.userId);
+        
+        if (this.organizationId) {
+          query = query.eq('organization_id', this.organizationId);
+        }
+        
+        const { data: memberData, error: memberError } = await query.single();
 
         if (memberError) {
-          results.push({
-            category: 'Profile',
-            test: 'Role verification',
-            passed: false,
-            error: memberError.message
-          });
+          // If we couldn't find the specific organization membership, try to find any membership
+          const { data: allMembers, error: allMembersError } = await schemaClient.app
+            .organization_members()
+            .select('role, organization_id')
+            .eq('user_id', this.userId);
+          
+          if (allMembersError) {
+            results.push({
+              category: 'Profile',
+              test: 'Role verification',
+              passed: false,
+              error: `Specific org error: ${memberError.message}, All orgs error: ${allMembersError.message}`
+            });
+          } else if (allMembers && allMembers.length > 0) {
+            const firstMember = allMembers[0];
+            const actualRole = firstMember.role;
+            const roleMatch = actualRole === this.userRole;
+            const isExpectedUnknownButFoundRole = this.userRole === 'unknown' && actualRole !== 'unknown';
+            
+            results.push({
+              category: 'Profile',
+              test: 'Role verification (fallback)',
+              passed: roleMatch,
+              details: `Expected: ${this.userRole}, Got: ${actualRole} (User ID: ${this.userId}, Found ${allMembers.length} org memberships, using first: ${firstMember.organization_id})${isExpectedUnknownButFoundRole ? ' - Role determination may need fixing' : ''}`
+            });
+            
+            if (isExpectedUnknownButFoundRole) {
+              results.push({
+                category: 'Profile',
+                test: 'Role determination logic',
+                passed: false,
+                details: `User has role '${actualRole}' in database but test expected 'unknown'. Check getUserRole function.`
+              });
+            }
+          } else {
+            results.push({
+              category: 'Profile',
+              test: 'Role verification',
+              passed: false,
+              error: `No organization memberships found for user ${this.userId}`
+            });
+          }
         } else {
           const actualRole = memberData?.role || 'unknown';
+          // If the expected role is 'unknown' but we found a role in the database,
+          // this might indicate that the role determination logic needs fixing
           const roleMatch = actualRole === this.userRole;
+          const isExpectedUnknownButFoundRole = this.userRole === 'unknown' && actualRole !== 'unknown';
+          
           results.push({
             category: 'Profile',
             test: 'Role verification',
             passed: roleMatch,
-            details: `Expected: ${this.userRole}, Got: ${actualRole}`
+            details: `Expected: ${this.userRole}, Got: ${actualRole} (User ID: ${this.userId}, Org ID: ${this.organizationId || 'none'})${isExpectedUnknownButFoundRole ? ' - Role determination may need fixing' : ''}`
           });
+          
+          // Add additional info if there's a mismatch
+          if (isExpectedUnknownButFoundRole) {
+            results.push({
+              category: 'Profile',
+              test: 'Role determination logic',
+              passed: false,
+              details: `User has role '${actualRole}' in database but test expected 'unknown'. Check getUserRole function.`
+            });
+          }
         }
       }
 

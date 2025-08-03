@@ -49,9 +49,9 @@ export const ComprehensiveTestSuite: React.FC = () => {
     
     try {
       // Get user role and organization
-      const role = await dbQueries.getUserRole(profile.id);
       const userProfile = await dbQueries.getUserWithProfile(profile.id);
       const orgId = userProfile?.organization_members?.[0]?.organization_id;
+      const role = await dbQueries.getUserRole(profile.id, orgId);
 
       setTestState(prev => ({ 
         ...prev, 

@@ -7,20 +7,28 @@ export class DatabaseQueries {
   async getUserWithProfile(userId: string): Promise<UserWithProfile | null> {
     const { data: profile, error } = await this.db.app
       .profiles()
-      .select(`
-        *,
-        organization_members(*)
-      `)
+      .select('*')
       .eq('id', userId)
       .single();
 
     if (error || !profile) return null;
 
+    // Query organization memberships directly instead of using join
+    const { data: organizationMembers, error: membersError } = await this.db.app
+      .organization_members()
+      .select('*')
+      .eq('user_id', userId);
+
+    if (membersError) {
+      console.error('Error fetching organization memberships:', membersError);
+      // Continue with empty memberships rather than failing
+    }
+
     return {
       id: userId,
       email: profile.email,
       profile,
-      organization_members: profile.organization_members || []
+      organization_members: organizationMembers || []
     };
   }
 
@@ -81,6 +89,19 @@ export class DatabaseQueries {
   }
 
   async getMessageThreadsByUser(userId: string) {
+    // First get the thread IDs for this user
+    const { data: threadIds, error: threadIdsError } = await this.db.messaging
+      .message_participants()
+      .select('thread_id')
+      .eq('user_id', userId);
+
+    if (threadIdsError) throw threadIdsError;
+
+    if (!threadIds || threadIds.length === 0) {
+      return [];
+    }
+
+    // Then get the threads with their messages and participants
     const { data, error } = await this.db.messaging
       .message_threads()
       .select(`
@@ -88,12 +109,7 @@ export class DatabaseQueries {
         messages(*),
         participants:message_participants(*)
       `)
-      .in('id', 
-        this.db.messaging
-          .message_participants()
-          .select('thread_id')
-          .eq('user_id', userId)
-      );
+      .in('id', threadIds.map(t => t.thread_id));
 
     if (error) throw error;
     return data || [];
@@ -117,21 +133,34 @@ export class DatabaseQueries {
 
   async getUserRole(userId: string, organizationId?: string): Promise<UserRole | null> {
     const userProfile = await this.getUserWithProfile(userId);
-    if (!userProfile) return null;
+    if (!userProfile) {
+      console.log(`getUserRole: No user profile found for userId: ${userId}`);
+      return null;
+    }
+
+    console.log(`getUserRole: Found ${userProfile.organization_members.length} organization memberships for user ${userId}`);
+    userProfile.organization_members.forEach((member, index) => {
+      console.log(`  ${index + 1}. Organization: ${member.organization_id}, Role: ${member.role}`);
+    });
 
     if (organizationId) {
       const orgMember = userProfile.organization_members.find(
         member => member.organization_id === organizationId
       );
-      return orgMember?.role as UserRole || null;
+      const role = orgMember?.role as UserRole || null;
+      console.log(`getUserRole: Looking for org ${organizationId}, found role: ${role}`);
+      return role;
     }
 
     // In the new schema, roles are stored in organization_members table
     // If no organizationId is provided, return the role from the first organization membership
     if (userProfile.organization_members.length > 0) {
-      return userProfile.organization_members[0].role as UserRole;
+      const role = userProfile.organization_members[0].role as UserRole;
+      console.log(`getUserRole: No org specified, using first membership role: ${role}`);
+      return role;
     }
 
+    console.log(`getUserRole: No organization memberships found for user ${userId}`);
     return null;
   }
 
