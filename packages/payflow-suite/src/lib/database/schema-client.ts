@@ -51,7 +51,7 @@ export class SchemaClient {
 
   get audit() {
     return {
-      audit_logs: () => this.client.schema('audit').from('audit_logs'),
+      audit_logs: () => this.client.from('audit_logs'),
     };
   }
 }

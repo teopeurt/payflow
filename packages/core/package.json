@@ -16,11 +16,15 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
+    "dotenv": "^17.2.1",
+    "drizzle-orm": "^0.44.4",
+    "postgres": "^3.4.7",
     "react": "^18.3.1",
     "sst": "*",
     "supabase": "^2.31.8"
   },
   "devDependencies": {
+    "drizzle-kit": "^0.31.4",
     "vitest": "^2"
   }
 }

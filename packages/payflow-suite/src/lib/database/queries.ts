@@ -123,10 +123,16 @@ export class DatabaseQueries {
       const orgMember = userProfile.organization_members.find(
         member => member.organization_id === organizationId
       );
-      return orgMember?.role as UserRole || userProfile.profile.role as UserRole;
+      return orgMember?.role as UserRole || null;
     }
 
-    return userProfile.profile.role as UserRole;
+    // In the new schema, roles are stored in organization_members table
+    // If no organizationId is provided, return the role from the first organization membership
+    if (userProfile.organization_members.length > 0) {
+      return userProfile.organization_members[0].role as UserRole;
+    }
+
+    return null;
   }
 
   async hasPermission(userId: string, resource: string, action: string, organizationId?: string): Promise<boolean> {

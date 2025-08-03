@@ -313,15 +313,32 @@ export class RLSAccessControlTest {
         details: `Profile access: ${profile ? 'SUCCESS' : 'FAIL'}`
       });
 
-      // Test: Role verification
+      // Test: Role verification - get role from organization_members table
       if (profile) {
-        const roleMatch = profile.role === this.userRole;
-        results.push({
-          category: 'Profile',
-          test: 'Role verification',
-          passed: roleMatch,
-          details: `Expected: ${this.userRole}, Got: ${profile.role}`
-        });
+        // Get user's role from organization_members table
+        const { data: memberData, error: memberError } = await schemaClient.app
+          .organization_members()
+          .select('role')
+          .eq('user_id', this.userId)
+          .single();
+
+        if (memberError) {
+          results.push({
+            category: 'Profile',
+            test: 'Role verification',
+            passed: false,
+            error: memberError.message
+          });
+        } else {
+          const actualRole = memberData?.role || 'unknown';
+          const roleMatch = actualRole === this.userRole;
+          results.push({
+            category: 'Profile',
+            test: 'Role verification',
+            passed: roleMatch,
+            details: `Expected: ${this.userRole}, Got: ${actualRole}`
+          });
+        }
       }
 
     } catch (error) {
