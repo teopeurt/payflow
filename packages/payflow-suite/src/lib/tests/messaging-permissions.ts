@@ -65,13 +65,21 @@ export class MessagingPermissionsTest {
         .limit(1);
 
       if (!threads || threads.length === 0) {
+        // Get a project to associate with the thread
+        const { data: projects } = await schemaClient.app
+          .projects()
+          .select('id')
+          .limit(1);
+
+        const projectId = projects?.[0]?.id;
+
         // Create a test thread
         const { data: newThread, error: threadError } = await schemaClient.messaging
           .message_threads()
           .insert({
             subject: 'Test Thread',
             created_by: this.userId,
-            status: 'active'
+            project_id: projectId
           })
           .select('id')
           .single();
@@ -83,20 +91,31 @@ export class MessagingPermissionsTest {
       const threadId = threads[0].id;
 
       // Try to send a test message
-      const { error } = await schemaClient.messaging
+      const { data: newMessage, error } = await schemaClient.messaging
         .messages()
         .insert({
           thread_id: threadId,
           sender_id: this.userId,
           content: 'Test message for permissions check',
           message_type: 'text'
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
 
+      // Verify the message can be retrieved
+      const { data: retrievedMessage, error: retrieveError } = await schemaClient.messaging
+        .messages()
+        .select('id, content, sender_id')
+        .eq('id', newMessage.id)
+        .single();
+
+      if (retrieveError) throw retrieveError;
+
       return {
         test: 'Message Sending',
-        passed: true
+        passed: retrievedMessage?.sender_id === this.userId
       };
     } catch (error) {
       return {
@@ -109,36 +128,47 @@ export class MessagingPermissionsTest {
 
   private async testMessageReadStatus(): Promise<TestResult> {
     try {
-      // Get a thread
-      const { data: threads } = await schemaClient.messaging
-        .message_threads()
+      // Get a message to mark as read
+      const { data: messages } = await schemaClient.messaging
+        .messages()
         .select('id')
         .limit(1);
 
-      if (!threads || threads.length === 0) {
+      if (!messages || messages.length === 0) {
         return {
           test: 'Message Read Status',
           passed: false,
-          error: 'No threads available for testing'
+          error: 'No messages available for testing'
         };
       }
 
-      const threadId = threads[0].id;
+      const messageId = messages[0].id;
 
-      // Try to mark thread as read
+      // Try to mark message as read
       const { error } = await schemaClient.messaging
-        .message_read_status()
+        .message_recipients()
         .upsert({
-          thread_id: threadId,
+          message_id: messageId,
           user_id: this.userId,
+          read_status: true,
           read_at: new Date().toISOString()
         });
 
       if (error) throw error;
 
+      // Verify the read status was set
+      const { data: readStatus, error: readError } = await schemaClient.messaging
+        .message_recipients()
+        .select('read_status')
+        .eq('message_id', messageId)
+        .eq('user_id', this.userId)
+        .single();
+
+      if (readError) throw readError;
+
       return {
         test: 'Message Read Status',
-        passed: true
+        passed: readStatus?.read_status === true
       };
     } catch (error) {
       return {

@@ -3,11 +3,11 @@
 /*
 CREATE SCHEMA "auth";
 --> statement-breakpoint
-CREATE SCHEMA "app";
---> statement-breakpoint
 CREATE SCHEMA "finance";
 --> statement-breakpoint
 CREATE SCHEMA "messaging";
+--> statement-breakpoint
+CREATE SCHEMA "app";
 --> statement-breakpoint
 CREATE SCHEMA "audit";
 --> statement-breakpoint
@@ -19,22 +19,6 @@ CREATE TYPE "auth"."one_time_token_type" AS ENUM('confirmation_token', 'reauthen
 CREATE TYPE "public"."app_role" AS ENUM('admin', 'client', 'team_member');--> statement-breakpoint
 CREATE TYPE "public"."recurring_frequency_type" AS ENUM('daily', 'weekly', 'monthly', 'quarterly', 'yearly');--> statement-breakpoint
 CREATE TYPE "public"."recurring_until_type" AS ENUM('indefinitely', 'on_date', 'count');--> statement-breakpoint
-CREATE TABLE "auth"."saml_providers" (
-	"id" uuid NOT NULL,
-	"sso_provider_id" uuid NOT NULL,
-	"entity_id" text NOT NULL,
-	"metadata_xml" text NOT NULL,
-	"metadata_url" text,
-	"attribute_mapping" jsonb,
-	"created_at" timestamp with time zone,
-	"updated_at" timestamp with time zone,
-	"name_id_format" text,
-	CONSTRAINT "entity_id not empty" CHECK (char_length(entity_id) > 0),
-	CONSTRAINT "metadata_url not empty" CHECK ((metadata_url = NULL::text) OR (char_length(metadata_url) > 0)),
-	CONSTRAINT "metadata_xml not empty" CHECK (char_length(metadata_xml) > 0)
-);
---> statement-breakpoint
-ALTER TABLE "auth"."saml_providers" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE TABLE "auth"."flow_state" (
 	"id" uuid NOT NULL,
 	"user_id" uuid,
@@ -51,6 +35,22 @@ CREATE TABLE "auth"."flow_state" (
 );
 --> statement-breakpoint
 ALTER TABLE "auth"."flow_state" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE TABLE "auth"."saml_providers" (
+	"id" uuid NOT NULL,
+	"sso_provider_id" uuid NOT NULL,
+	"entity_id" text NOT NULL,
+	"metadata_xml" text NOT NULL,
+	"metadata_url" text,
+	"attribute_mapping" jsonb,
+	"created_at" timestamp with time zone,
+	"updated_at" timestamp with time zone,
+	"name_id_format" text,
+	CONSTRAINT "entity_id not empty" CHECK (char_length(entity_id) > 0),
+	CONSTRAINT "metadata_url not empty" CHECK ((metadata_url = NULL::text) OR (char_length(metadata_url) > 0)),
+	CONSTRAINT "metadata_xml not empty" CHECK (char_length(metadata_xml) > 0)
+);
+--> statement-breakpoint
+ALTER TABLE "auth"."saml_providers" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE TABLE "auth"."instances" (
 	"id" uuid NOT NULL,
 	"uuid" uuid,
@@ -60,19 +60,6 @@ CREATE TABLE "auth"."instances" (
 );
 --> statement-breakpoint
 ALTER TABLE "auth"."instances" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
-CREATE TABLE "auth"."refresh_tokens" (
-	"instance_id" uuid,
-	"id" bigserial NOT NULL,
-	"token" varchar(255),
-	"user_id" varchar(255),
-	"revoked" boolean,
-	"created_at" timestamp with time zone,
-	"updated_at" timestamp with time zone,
-	"parent" varchar(255),
-	"session_id" uuid
-);
---> statement-breakpoint
-ALTER TABLE "auth"."refresh_tokens" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE TABLE "auth"."saml_relay_states" (
 	"id" uuid NOT NULL,
 	"sso_provider_id" uuid NOT NULL,
@@ -86,6 +73,19 @@ CREATE TABLE "auth"."saml_relay_states" (
 );
 --> statement-breakpoint
 ALTER TABLE "auth"."saml_relay_states" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE TABLE "auth"."refresh_tokens" (
+	"instance_id" uuid,
+	"id" bigserial NOT NULL,
+	"token" varchar(255),
+	"user_id" varchar(255),
+	"revoked" boolean,
+	"created_at" timestamp with time zone,
+	"updated_at" timestamp with time zone,
+	"parent" varchar(255),
+	"session_id" uuid
+);
+--> statement-breakpoint
+ALTER TABLE "auth"."refresh_tokens" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE TABLE "auth"."sso_domains" (
 	"id" uuid NOT NULL,
 	"sso_provider_id" uuid NOT NULL,
@@ -217,15 +217,6 @@ CREATE TABLE "auth"."mfa_amr_claims" (
 );
 --> statement-breakpoint
 ALTER TABLE "auth"."mfa_amr_claims" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
-CREATE TABLE "auth"."audit_log_entries" (
-	"instance_id" uuid,
-	"id" uuid NOT NULL,
-	"payload" json,
-	"created_at" timestamp with time zone,
-	"ip_address" varchar(64) DEFAULT '' NOT NULL
-);
---> statement-breakpoint
-ALTER TABLE "auth"."audit_log_entries" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE TABLE "auth"."sso_providers" (
 	"id" uuid NOT NULL,
 	"resource_id" text,
@@ -235,6 +226,15 @@ CREATE TABLE "auth"."sso_providers" (
 );
 --> statement-breakpoint
 ALTER TABLE "auth"."sso_providers" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE TABLE "auth"."audit_log_entries" (
+	"instance_id" uuid,
+	"id" uuid NOT NULL,
+	"payload" json,
+	"created_at" timestamp with time zone,
+	"ip_address" varchar(64) DEFAULT '' NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "auth"."audit_log_entries" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE TABLE "app"."organizations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
@@ -682,9 +682,9 @@ CREATE TABLE "audit"."audit_logs" (
 --> statement-breakpoint
 ALTER TABLE "audit"."audit_logs" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 ALTER TABLE "auth"."saml_providers" ADD CONSTRAINT "saml_providers_sso_provider_id_fkey" FOREIGN KEY ("sso_provider_id") REFERENCES "auth"."sso_providers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "auth"."refresh_tokens" ADD CONSTRAINT "refresh_tokens_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "auth"."sessions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "auth"."saml_relay_states" ADD CONSTRAINT "saml_relay_states_flow_state_id_fkey" FOREIGN KEY ("flow_state_id") REFERENCES "auth"."flow_state"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "auth"."saml_relay_states" ADD CONSTRAINT "saml_relay_states_sso_provider_id_fkey" FOREIGN KEY ("sso_provider_id") REFERENCES "auth"."sso_providers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "auth"."refresh_tokens" ADD CONSTRAINT "refresh_tokens_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "auth"."sessions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "auth"."sso_domains" ADD CONSTRAINT "sso_domains_sso_provider_id_fkey" FOREIGN KEY ("sso_provider_id") REFERENCES "auth"."sso_providers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "auth"."identities" ADD CONSTRAINT "identities_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "auth"."sessions" ADD CONSTRAINT "sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -752,18 +752,18 @@ ALTER TABLE "messaging"."message_recipients" ADD CONSTRAINT "message_recipients_
 ALTER TABLE "messaging"."thread_participants" ADD CONSTRAINT "thread_participants_thread_id_fkey" FOREIGN KEY ("thread_id") REFERENCES "messaging"."message_threads"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messaging"."thread_participants" ADD CONSTRAINT "thread_participants_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "app"."profiles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "audit"."audit_logs" ADD CONSTRAINT "audit_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "saml_providers_sso_provider_id_idx" ON "auth"."saml_providers" USING btree ("sso_provider_id" uuid_ops);--> statement-breakpoint
 CREATE INDEX "flow_state_created_at_idx" ON "auth"."flow_state" USING btree ("created_at" timestamptz_ops);--> statement-breakpoint
 CREATE INDEX "idx_auth_code" ON "auth"."flow_state" USING btree ("auth_code" text_ops);--> statement-breakpoint
 CREATE INDEX "idx_user_id_auth_method" ON "auth"."flow_state" USING btree ("user_id" uuid_ops,"authentication_method" uuid_ops);--> statement-breakpoint
+CREATE INDEX "saml_providers_sso_provider_id_idx" ON "auth"."saml_providers" USING btree ("sso_provider_id" uuid_ops);--> statement-breakpoint
+CREATE INDEX "saml_relay_states_created_at_idx" ON "auth"."saml_relay_states" USING btree ("created_at" timestamptz_ops);--> statement-breakpoint
+CREATE INDEX "saml_relay_states_for_email_idx" ON "auth"."saml_relay_states" USING btree ("for_email" text_ops);--> statement-breakpoint
+CREATE INDEX "saml_relay_states_sso_provider_id_idx" ON "auth"."saml_relay_states" USING btree ("sso_provider_id" uuid_ops);--> statement-breakpoint
 CREATE INDEX "refresh_tokens_instance_id_idx" ON "auth"."refresh_tokens" USING btree ("instance_id" uuid_ops);--> statement-breakpoint
 CREATE INDEX "refresh_tokens_instance_id_user_id_idx" ON "auth"."refresh_tokens" USING btree ("instance_id" text_ops,"user_id" text_ops);--> statement-breakpoint
 CREATE INDEX "refresh_tokens_parent_idx" ON "auth"."refresh_tokens" USING btree ("parent" text_ops);--> statement-breakpoint
 CREATE INDEX "refresh_tokens_session_id_revoked_idx" ON "auth"."refresh_tokens" USING btree ("session_id" bool_ops,"revoked" bool_ops);--> statement-breakpoint
 CREATE INDEX "refresh_tokens_updated_at_idx" ON "auth"."refresh_tokens" USING btree ("updated_at" timestamptz_ops);--> statement-breakpoint
-CREATE INDEX "saml_relay_states_created_at_idx" ON "auth"."saml_relay_states" USING btree ("created_at" timestamptz_ops);--> statement-breakpoint
-CREATE INDEX "saml_relay_states_for_email_idx" ON "auth"."saml_relay_states" USING btree ("for_email" text_ops);--> statement-breakpoint
-CREATE INDEX "saml_relay_states_sso_provider_id_idx" ON "auth"."saml_relay_states" USING btree ("sso_provider_id" uuid_ops);--> statement-breakpoint
 CREATE UNIQUE INDEX "sso_domains_domain_idx" ON "auth"."sso_domains" USING btree (lower(domain) text_ops);--> statement-breakpoint
 CREATE INDEX "sso_domains_sso_provider_id_idx" ON "auth"."sso_domains" USING btree ("sso_provider_id" uuid_ops);--> statement-breakpoint
 CREATE UNIQUE INDEX "confirmation_token_idx" ON "auth"."users" USING btree ("confirmation_token" text_ops) WHERE ((confirmation_token)::text !~ '^[0-9 ]*$'::text);--> statement-breakpoint
@@ -788,8 +788,8 @@ CREATE INDEX "one_time_tokens_relates_to_hash_idx" ON "auth"."one_time_tokens" U
 CREATE INDEX "one_time_tokens_token_hash_hash_idx" ON "auth"."one_time_tokens" USING hash ("token_hash" text_ops);--> statement-breakpoint
 CREATE UNIQUE INDEX "one_time_tokens_user_id_token_type_key" ON "auth"."one_time_tokens" USING btree ("user_id" uuid_ops,"token_type" uuid_ops);--> statement-breakpoint
 CREATE INDEX "mfa_challenge_created_at_idx" ON "auth"."mfa_challenges" USING btree ("created_at" timestamptz_ops);--> statement-breakpoint
-CREATE INDEX "audit_logs_instance_id_idx" ON "auth"."audit_log_entries" USING btree ("instance_id" uuid_ops);--> statement-breakpoint
 CREATE UNIQUE INDEX "sso_providers_resource_id_idx" ON "auth"."sso_providers" USING btree (lower(resource_id) text_ops);--> statement-breakpoint
+CREATE INDEX "audit_logs_instance_id_idx" ON "auth"."audit_log_entries" USING btree ("instance_id" uuid_ops);--> statement-breakpoint
 CREATE INDEX "idx_projects_client_id" ON "app"."projects" USING btree ("client_id" uuid_ops);--> statement-breakpoint
 CREATE INDEX "idx_projects_client_status" ON "app"."projects" USING btree ("client_id" text_ops,"status" uuid_ops);--> statement-breakpoint
 CREATE INDEX "idx_projects_dates" ON "app"."projects" USING btree ("start_date" date_ops,"end_date" date_ops);--> statement-breakpoint
@@ -845,15 +845,13 @@ CREATE POLICY "Admins can manage organization members" ON "app"."organization_me
 CREATE POLICY "Admins and team members can create projects" ON "app"."projects" AS PERMISSIVE FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM app.profiles
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = ANY (ARRAY['admin'::text, 'team_member'::text]))))));--> statement-breakpoint
+CREATE POLICY "Admins can delete projects" ON "app"."projects" AS PERMISSIVE FOR DELETE TO "authenticated";--> statement-breakpoint
 CREATE POLICY "Users can read projects they're assigned to or are clients of" ON "app"."projects" AS PERMISSIVE FOR SELECT TO "authenticated";--> statement-breakpoint
 CREATE POLICY "Project team members and admins can update projects" ON "app"."projects" AS PERMISSIVE FOR UPDATE TO "authenticated";--> statement-breakpoint
-CREATE POLICY "Admins can delete projects" ON "app"."projects" AS PERMISSIVE FOR DELETE TO "authenticated";--> statement-breakpoint
-CREATE POLICY "Project team members and admins can manage project team" ON "app"."project_team" AS PERMISSIVE FOR ALL TO "authenticated" USING (((project_id IN ( SELECT DISTINCT pt2.project_id
-   FROM app.project_team pt2
-  WHERE (pt2.user_id = auth.uid()))) OR (EXISTS ( SELECT 1
+CREATE POLICY "Users can read project team assignments" ON "app"."project_team" AS PERMISSIVE FOR SELECT TO "authenticated" USING (((user_id = auth.uid()) OR (EXISTS ( SELECT 1
    FROM app.profiles
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))));--> statement-breakpoint
-CREATE POLICY "Users can read project team assignments" ON "app"."project_team" AS PERMISSIVE FOR SELECT TO "authenticated";--> statement-breakpoint
+CREATE POLICY "Project team members and admins can manage project team" ON "app"."project_team" AS PERMISSIVE FOR ALL TO "authenticated";--> statement-breakpoint
 CREATE POLICY "Users can read tasks from their projects" ON "app"."tasks" AS PERMISSIVE FOR SELECT TO "authenticated" USING (((project_id IN ( SELECT project_team.project_id
    FROM app.project_team
   WHERE (project_team.user_id = auth.uid()))) OR (EXISTS ( SELECT 1
@@ -887,25 +885,19 @@ CREATE POLICY "Users can manage file shares for files they own or manage" ON "ap
   WHERE (files.uploaded_by = auth.uid()))) OR (EXISTS ( SELECT 1
    FROM app.profiles
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))));--> statement-breakpoint
-CREATE POLICY "Users can read events they're invited to" ON "app"."calendar_events" AS PERMISSIVE FOR SELECT TO "authenticated" USING (((created_by = auth.uid()) OR (id IN ( SELECT event_attendees.event_id
-   FROM app.event_attendees
-  WHERE (event_attendees.user_id = auth.uid()))) OR (project_id IN ( SELECT project_team.project_id
-   FROM app.project_team
-  WHERE (project_team.user_id = auth.uid()))) OR (project_id IN ( SELECT projects.id
+CREATE POLICY "Users can read events they're invited to" ON "app"."calendar_events" AS PERMISSIVE FOR SELECT TO "authenticated" USING (((created_by = auth.uid()) OR app.is_attendee_of_event(id, auth.uid()) OR app.is_member_of_project(project_id, auth.uid()) OR (EXISTS ( SELECT 1
    FROM app.projects
-  WHERE (projects.client_id = auth.uid()))) OR (EXISTS ( SELECT 1
+  WHERE ((projects.id = calendar_events.project_id) AND (projects.client_id = auth.uid())))) OR (EXISTS ( SELECT 1
    FROM app.profiles
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))));--> statement-breakpoint
 CREATE POLICY "Team members and admins can manage calendar events" ON "app"."calendar_events" AS PERMISSIVE FOR ALL TO "authenticated";--> statement-breakpoint
-CREATE POLICY "Users can read event attendees for events they can access" ON "app"."event_attendees" AS PERMISSIVE FOR SELECT TO "authenticated" USING (((event_id IN ( SELECT calendar_events.id
+CREATE POLICY "Users can read event attendees for events they can access" ON "app"."event_attendees" AS PERMISSIVE FOR SELECT TO "authenticated" USING (((user_id = auth.uid()) OR (EXISTS ( SELECT 1
    FROM app.calendar_events
-  WHERE ((calendar_events.created_by = auth.uid()) OR (calendar_events.id IN ( SELECT event_attendees_1.event_id
-           FROM app.event_attendees event_attendees_1
-          WHERE (event_attendees_1.user_id = auth.uid())))))) OR (EXISTS ( SELECT 1
-   FROM app.profiles
-  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))));--> statement-breakpoint
-CREATE POLICY "Users can manage their own event attendance" ON "app"."event_attendees" AS PERMISSIVE FOR UPDATE TO "authenticated";--> statement-breakpoint
+  WHERE ((calendar_events.id = event_attendees.event_id) AND ((calendar_events.created_by = auth.uid()) OR app.is_member_of_project(calendar_events.project_id, auth.uid()) OR (EXISTS ( SELECT 1
+           FROM app.profiles
+          WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))))))));--> statement-breakpoint
 CREATE POLICY "Event creators and admins can manage event attendees" ON "app"."event_attendees" AS PERMISSIVE FOR ALL TO "authenticated";--> statement-breakpoint
+CREATE POLICY "Users can manage their own event attendance" ON "app"."event_attendees" AS PERMISSIVE FOR UPDATE TO "authenticated";--> statement-breakpoint
 CREATE POLICY "Users can view milestones for their projects" ON "app"."milestones" AS PERMISSIVE FOR SELECT TO public USING (((project_id IN ( SELECT project_team.project_id
    FROM app.project_team
   WHERE (project_team.user_id = auth.uid()))) OR (EXISTS ( SELECT 1
@@ -1013,18 +1005,10 @@ CREATE POLICY "Users can read threads for their projects" ON "messaging"."messag
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))));--> statement-breakpoint
 CREATE POLICY "Project members can create threads" ON "messaging"."message_threads" AS PERMISSIVE FOR INSERT TO "authenticated";--> statement-breakpoint
 CREATE POLICY "Project members can update threads" ON "messaging"."message_threads" AS PERMISSIVE FOR UPDATE TO "authenticated";--> statement-breakpoint
-CREATE POLICY "Users can read messages in their threads" ON "messaging"."messages" AS PERMISSIVE FOR SELECT TO "authenticated" USING (((thread_id IN ( SELECT message_threads.id
-   FROM messaging.message_threads
-  WHERE ((message_threads.project_id IN ( SELECT project_team.project_id
-           FROM app.project_team
-          WHERE (project_team.user_id = auth.uid()))) OR (message_threads.project_id IN ( SELECT projects.id
-           FROM app.projects
-          WHERE (projects.client_id = auth.uid())))))) OR (EXISTS ( SELECT 1
-   FROM app.profiles
-  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text))))));--> statement-breakpoint
+CREATE POLICY "Users can delete their own messages" ON "messaging"."messages" AS PERMISSIVE FOR DELETE TO "authenticated" USING ((sender_id = auth.uid()));--> statement-breakpoint
+CREATE POLICY "Users can read messages in their threads" ON "messaging"."messages" AS PERMISSIVE FOR SELECT TO "authenticated";--> statement-breakpoint
 CREATE POLICY "Users can send messages in their threads" ON "messaging"."messages" AS PERMISSIVE FOR INSERT TO "authenticated";--> statement-breakpoint
 CREATE POLICY "Users can update their own messages" ON "messaging"."messages" AS PERMISSIVE FOR UPDATE TO "authenticated";--> statement-breakpoint
-CREATE POLICY "Users can delete their own messages" ON "messaging"."messages" AS PERMISSIVE FOR DELETE TO "authenticated";--> statement-breakpoint
 CREATE POLICY "Users can manage their message read status" ON "messaging"."message_recipients" AS PERMISSIVE FOR ALL TO "authenticated" USING ((user_id = auth.uid()));--> statement-breakpoint
 CREATE POLICY "Users can read thread participants" ON "messaging"."thread_participants" AS PERMISSIVE FOR SELECT TO "authenticated" USING (((thread_id IN ( SELECT message_threads.id
    FROM messaging.message_threads

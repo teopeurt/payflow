@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { ssoProvidersInAuth, samlProvidersInAuth, sessionsInAuth, refreshTokensInAuth, flowStateInAuth, samlRelayStatesInAuth, ssoDomainsInAuth, usersInAuth, identitiesInAuth, mfaFactorsInAuth, oneTimeTokensInAuth, mfaChallengesInAuth, mfaAmrClaimsInAuth, profilesInApp, organizationsInApp, userRolesInApp, invitesInApp, organizationMembersInApp, projectsInApp, projectTeamInApp, tasksInApp, taskAssignmentsInApp, filesInApp, fileSharesInApp, calendarEventsInApp, eventAttendeesInApp, milestonesInApp, deliverablesInApp, documentsInApp, estimatesInFinance, estimateItemsInFinance, quotesInFinance, quoteItemsInFinance, invoicesInFinance, invoiceItemsInFinance, paymentsInFinance, recurringInvoiceTemplatesInFinance, recurringInvoiceHistoryInFinance, messageThreadsInMessaging, messagesInMessaging, messageRecipientsInMessaging, threadParticipantsInMessaging, auditLogsInAudit } from "./schema";
+import { ssoProvidersInAuth, samlProvidersInAuth, flowStateInAuth, samlRelayStatesInAuth, sessionsInAuth, refreshTokensInAuth, ssoDomainsInAuth, usersInAuth, identitiesInAuth, mfaFactorsInAuth, oneTimeTokensInAuth, mfaChallengesInAuth, mfaAmrClaimsInAuth, profilesInApp, organizationsInApp, userRolesInApp, invitesInApp, organizationMembersInApp, projectsInApp, projectTeamInApp, tasksInApp, taskAssignmentsInApp, filesInApp, fileSharesInApp, calendarEventsInApp, eventAttendeesInApp, milestonesInApp, deliverablesInApp, documentsInApp, estimatesInFinance, estimateItemsInFinance, quotesInFinance, quoteItemsInFinance, invoicesInFinance, invoiceItemsInFinance, paymentsInFinance, recurringInvoiceTemplatesInFinance, recurringInvoiceHistoryInFinance, messageThreadsInMessaging, messagesInMessaging, messageRecipientsInMessaging, threadParticipantsInMessaging, auditLogsInAudit } from "./schema";
 
 export const samlProvidersInAuthRelations = relations(samlProvidersInAuth, ({one}) => ({
 	ssoProvidersInAuth: one(ssoProvidersInAuth, {
@@ -12,6 +12,21 @@ export const ssoProvidersInAuthRelations = relations(ssoProvidersInAuth, ({many}
 	samlProvidersInAuths: many(samlProvidersInAuth),
 	samlRelayStatesInAuths: many(samlRelayStatesInAuth),
 	ssoDomainsInAuths: many(ssoDomainsInAuth),
+}));
+
+export const samlRelayStatesInAuthRelations = relations(samlRelayStatesInAuth, ({one}) => ({
+	flowStateInAuth: one(flowStateInAuth, {
+		fields: [samlRelayStatesInAuth.flowStateId],
+		references: [flowStateInAuth.id]
+	}),
+	ssoProvidersInAuth: one(ssoProvidersInAuth, {
+		fields: [samlRelayStatesInAuth.ssoProviderId],
+		references: [ssoProvidersInAuth.id]
+	}),
+}));
+
+export const flowStateInAuthRelations = relations(flowStateInAuth, ({many}) => ({
+	samlRelayStatesInAuths: many(samlRelayStatesInAuth),
 }));
 
 export const refreshTokensInAuthRelations = relations(refreshTokensInAuth, ({one}) => ({
@@ -28,21 +43,6 @@ export const sessionsInAuthRelations = relations(sessionsInAuth, ({one, many}) =
 		references: [usersInAuth.id]
 	}),
 	mfaAmrClaimsInAuths: many(mfaAmrClaimsInAuth),
-}));
-
-export const samlRelayStatesInAuthRelations = relations(samlRelayStatesInAuth, ({one}) => ({
-	flowStateInAuth: one(flowStateInAuth, {
-		fields: [samlRelayStatesInAuth.flowStateId],
-		references: [flowStateInAuth.id]
-	}),
-	ssoProvidersInAuth: one(ssoProvidersInAuth, {
-		fields: [samlRelayStatesInAuth.ssoProviderId],
-		references: [ssoProvidersInAuth.id]
-	}),
-}));
-
-export const flowStateInAuthRelations = relations(flowStateInAuth, ({many}) => ({
-	samlRelayStatesInAuths: many(samlRelayStatesInAuth),
 }));
 
 export const ssoDomainsInAuthRelations = relations(ssoDomainsInAuth, ({one}) => ({

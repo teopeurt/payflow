@@ -121,7 +121,7 @@ const MessageList: React.FC = () => {
         .select(`
           *,
           sender:profiles!messages_sender_id_fkey(full_name),
-          read_by:message_read_status(user_id, read_at)
+          read_by:message_recipients(user_id, read_at)
         `)
         .eq('thread_id', threadId)
         .eq('is_deleted', false)
@@ -140,10 +140,11 @@ const MessageList: React.FC = () => {
     try {
       // Mark all unread messages in this thread as read
       const { error } = await schemaClient.messaging
-        .message_read_status()
+        .message_recipients()
         .upsert({
-          thread_id: threadId,
+          message_id: threadId,
           user_id: profile.id,
+          read_status: true,
           read_at: new Date().toISOString()
         });
 

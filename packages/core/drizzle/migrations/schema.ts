@@ -1,10 +1,10 @@
-import { pgTable, pgSchema, index, foreignKey, check, uuid, text, jsonb, timestamp, bigserial, varchar, boolean, uniqueIndex, smallint, inet, json, pgPolicy, integer, unique, date, numeric, bigint, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, pgSchema, index, uuid, text, timestamp, foreignKey, check, jsonb, bigserial, varchar, boolean, uniqueIndex, smallint, inet, json, pgPolicy, integer, unique, date, numeric, bigint, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const auth = pgSchema("auth");
-export const app = pgSchema("app");
 export const finance = pgSchema("finance");
 export const messaging = pgSchema("messaging");
+export const app = pgSchema("app");
 export const audit = pgSchema("audit");
 export const aalLevelInAuth = auth.enum("aal_level", ['aal1', 'aal2', 'aal3'])
 export const codeChallengeMethodInAuth = auth.enum("code_challenge_method", ['s256', 'plain'])
@@ -15,6 +15,25 @@ export const appRole = pgEnum("app_role", ['admin', 'client', 'team_member'])
 export const recurringFrequencyType = pgEnum("recurring_frequency_type", ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'])
 export const recurringUntilType = pgEnum("recurring_until_type", ['indefinitely', 'on_date', 'count'])
 
+
+export const flowStateInAuth = auth.table("flow_state", {
+	id: uuid().notNull(),
+	userId: uuid("user_id"),
+	authCode: text("auth_code").notNull(),
+	codeChallengeMethod: codeChallengeMethodInAuth("code_challenge_method").notNull(),
+	codeChallenge: text("code_challenge").notNull(),
+	providerType: text("provider_type").notNull(),
+	providerAccessToken: text("provider_access_token"),
+	providerRefreshToken: text("provider_refresh_token"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+	authenticationMethod: text("authentication_method").notNull(),
+	authCodeIssuedAt: timestamp("auth_code_issued_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("flow_state_created_at_idx").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_auth_code").using("btree", table.authCode.asc().nullsLast().op("text_ops")),
+	index("idx_user_id_auth_method").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.authenticationMethod.asc().nullsLast().op("uuid_ops")),
+]);
 
 export const samlProvidersInAuth = auth.table("saml_providers", {
 	id: uuid().notNull(),
@@ -38,25 +57,6 @@ export const samlProvidersInAuth = auth.table("saml_providers", {
 	check("metadata_xml not empty", sql`char_length(metadata_xml) > 0`),
 ]);
 
-export const flowStateInAuth = auth.table("flow_state", {
-	id: uuid().notNull(),
-	userId: uuid("user_id"),
-	authCode: text("auth_code").notNull(),
-	codeChallengeMethod: codeChallengeMethodInAuth("code_challenge_method").notNull(),
-	codeChallenge: text("code_challenge").notNull(),
-	providerType: text("provider_type").notNull(),
-	providerAccessToken: text("provider_access_token"),
-	providerRefreshToken: text("provider_refresh_token"),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
-	authenticationMethod: text("authentication_method").notNull(),
-	authCodeIssuedAt: timestamp("auth_code_issued_at", { withTimezone: true, mode: 'string' }),
-}, (table) => [
-	index("flow_state_created_at_idx").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
-	index("idx_auth_code").using("btree", table.authCode.asc().nullsLast().op("text_ops")),
-	index("idx_user_id_auth_method").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.authenticationMethod.asc().nullsLast().op("uuid_ops")),
-]);
-
 export const instancesInAuth = auth.table("instances", {
 	id: uuid().notNull(),
 	uuid: uuid(),
@@ -64,29 +64,6 @@ export const instancesInAuth = auth.table("instances", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
 });
-
-export const refreshTokensInAuth = auth.table("refresh_tokens", {
-	instanceId: uuid("instance_id"),
-	id: bigserial({ mode: "bigint" }).notNull(),
-	token: varchar({ length: 255 }),
-	userId: varchar("user_id", { length: 255 }),
-	revoked: boolean(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
-	parent: varchar({ length: 255 }),
-	sessionId: uuid("session_id"),
-}, (table) => [
-	index("refresh_tokens_instance_id_idx").using("btree", table.instanceId.asc().nullsLast().op("uuid_ops")),
-	index("refresh_tokens_instance_id_user_id_idx").using("btree", table.instanceId.asc().nullsLast().op("text_ops"), table.userId.asc().nullsLast().op("text_ops")),
-	index("refresh_tokens_parent_idx").using("btree", table.parent.asc().nullsLast().op("text_ops")),
-	index("refresh_tokens_session_id_revoked_idx").using("btree", table.sessionId.asc().nullsLast().op("bool_ops"), table.revoked.asc().nullsLast().op("bool_ops")),
-	index("refresh_tokens_updated_at_idx").using("btree", table.updatedAt.desc().nullsFirst().op("timestamptz_ops")),
-	foreignKey({
-			columns: [table.sessionId],
-			foreignColumns: [sessionsInAuth.id],
-			name: "refresh_tokens_session_id_fkey"
-		}).onDelete("cascade"),
-]);
 
 export const samlRelayStatesInAuth = auth.table("saml_relay_states", {
 	id: uuid().notNull(),
@@ -112,6 +89,29 @@ export const samlRelayStatesInAuth = auth.table("saml_relay_states", {
 			name: "saml_relay_states_sso_provider_id_fkey"
 		}).onDelete("cascade"),
 	check("request_id not empty", sql`char_length(request_id) > 0`),
+]);
+
+export const refreshTokensInAuth = auth.table("refresh_tokens", {
+	instanceId: uuid("instance_id"),
+	id: bigserial({ mode: "bigint" }).notNull(),
+	token: varchar({ length: 255 }),
+	userId: varchar("user_id", { length: 255 }),
+	revoked: boolean(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+	parent: varchar({ length: 255 }),
+	sessionId: uuid("session_id"),
+}, (table) => [
+	index("refresh_tokens_instance_id_idx").using("btree", table.instanceId.asc().nullsLast().op("uuid_ops")),
+	index("refresh_tokens_instance_id_user_id_idx").using("btree", table.instanceId.asc().nullsLast().op("text_ops"), table.userId.asc().nullsLast().op("text_ops")),
+	index("refresh_tokens_parent_idx").using("btree", table.parent.asc().nullsLast().op("text_ops")),
+	index("refresh_tokens_session_id_revoked_idx").using("btree", table.sessionId.asc().nullsLast().op("bool_ops"), table.revoked.asc().nullsLast().op("bool_ops")),
+	index("refresh_tokens_updated_at_idx").using("btree", table.updatedAt.desc().nullsFirst().op("timestamptz_ops")),
+	foreignKey({
+			columns: [table.sessionId],
+			foreignColumns: [sessionsInAuth.id],
+			name: "refresh_tokens_session_id_fkey"
+		}).onDelete("cascade"),
 ]);
 
 export const ssoDomainsInAuth = auth.table("sso_domains", {
@@ -303,16 +303,6 @@ export const mfaAmrClaimsInAuth = auth.table("mfa_amr_claims", {
 		}).onDelete("cascade"),
 ]);
 
-export const auditLogEntriesInAuth = auth.table("audit_log_entries", {
-	instanceId: uuid("instance_id"),
-	id: uuid().notNull(),
-	payload: json(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }),
-	ipAddress: varchar("ip_address", { length: 64 }).default(').notNull(),
-}, (table) => [
-	index("audit_logs_instance_id_idx").using("btree", table.instanceId.asc().nullsLast().op("uuid_ops")),
-]);
-
 export const ssoProvidersInAuth = auth.table("sso_providers", {
 	id: uuid().notNull(),
 	resourceId: text("resource_id"),
@@ -321,6 +311,16 @@ export const ssoProvidersInAuth = auth.table("sso_providers", {
 }, (table) => [
 	uniqueIndex("sso_providers_resource_id_idx").using("btree", sql`lower(resource_id)`),
 	check("resource_id not empty", sql`(resource_id = NULL::text) OR (char_length(resource_id) > 0)`),
+]);
+
+export const auditLogEntriesInAuth = auth.table("audit_log_entries", {
+	instanceId: uuid("instance_id"),
+	id: uuid().notNull(),
+	payload: json(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }),
+	ipAddress: varchar("ip_address", { length: 64 }).default(').notNull(),
+}, (table) => [
+	index("audit_logs_instance_id_idx").using("btree", table.instanceId.asc().nullsLast().op("uuid_ops")),
 ]);
 
 export const organizationsInApp = app.table("organizations", {
@@ -481,9 +481,9 @@ export const projectsInApp = app.table("projects", {
 	pgPolicy("Admins and team members can create projects", { as: "permissive", for: "insert", to: ["authenticated"], withCheck: sql`(EXISTS ( SELECT 1
    FROM app.profiles
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = ANY (ARRAY['admin'::text, 'team_member'::text])))))`  }),
+	pgPolicy("Admins can delete projects", { as: "permissive", for: "delete", to: ["authenticated"] }),
 	pgPolicy("Users can read projects they're assigned to or are clients of", { as: "permissive", for: "select", to: ["authenticated"] }),
 	pgPolicy("Project team members and admins can update projects", { as: "permissive", for: "update", to: ["authenticated"] }),
-	pgPolicy("Admins can delete projects", { as: "permissive", for: "delete", to: ["authenticated"] }),
 	check("projects_priority_check", sql`priority = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'urgent'::text])`),
 	check("projects_status_check", sql`status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'archived'::text])`),
 ]);
@@ -507,12 +507,10 @@ export const projectTeamInApp = app.table("project_team", {
 			name: "project_team_user_id_fkey"
 		}).onDelete("cascade"),
 	unique("project_team_project_id_user_id_key").on(table.projectId, table.userId),
-	pgPolicy("Project team members and admins can manage project team", { as: "permissive", for: "all", to: ["authenticated"], using: sql`((project_id IN ( SELECT DISTINCT pt2.project_id
-   FROM app.project_team pt2
-  WHERE (pt2.user_id = auth.uid()))) OR (EXISTS ( SELECT 1
+	pgPolicy("Users can read project team assignments", { as: "permissive", for: "select", to: ["authenticated"], using: sql`((user_id = auth.uid()) OR (EXISTS ( SELECT 1
    FROM app.profiles
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text)))))` }),
-	pgPolicy("Users can read project team assignments", { as: "permissive", for: "select", to: ["authenticated"] }),
+	pgPolicy("Project team members and admins can manage project team", { as: "permissive", for: "all", to: ["authenticated"] }),
 ]);
 
 export const tasksInApp = app.table("tasks", {
@@ -693,13 +691,9 @@ export const calendarEventsInApp = app.table("calendar_events", {
 			foreignColumns: [projectsInApp.id],
 			name: "calendar_events_project_id_fkey"
 		}).onDelete("set null"),
-	pgPolicy("Users can read events they're invited to", { as: "permissive", for: "select", to: ["authenticated"], using: sql`((created_by = auth.uid()) OR (id IN ( SELECT event_attendees.event_id
-   FROM app.event_attendees
-  WHERE (event_attendees.user_id = auth.uid()))) OR (project_id IN ( SELECT project_team.project_id
-   FROM app.project_team
-  WHERE (project_team.user_id = auth.uid()))) OR (project_id IN ( SELECT projects.id
+	pgPolicy("Users can read events they're invited to", { as: "permissive", for: "select", to: ["authenticated"], using: sql`((created_by = auth.uid()) OR app.is_attendee_of_event(id, auth.uid()) OR app.is_member_of_project(project_id, auth.uid()) OR (EXISTS ( SELECT 1
    FROM app.projects
-  WHERE (projects.client_id = auth.uid()))) OR (EXISTS ( SELECT 1
+  WHERE ((projects.id = calendar_events.project_id) AND (projects.client_id = auth.uid())))) OR (EXISTS ( SELECT 1
    FROM app.profiles
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text)))))` }),
 	pgPolicy("Team members and admins can manage calendar events", { as: "permissive", for: "all", to: ["authenticated"] }),
@@ -725,15 +719,13 @@ export const eventAttendeesInApp = app.table("event_attendees", {
 			name: "event_attendees_user_id_fkey"
 		}).onDelete("cascade"),
 	unique("event_attendees_event_id_user_id_key").on(table.eventId, table.userId),
-	pgPolicy("Users can read event attendees for events they can access", { as: "permissive", for: "select", to: ["authenticated"], using: sql`((event_id IN ( SELECT calendar_events.id
+	pgPolicy("Users can read event attendees for events they can access", { as: "permissive", for: "select", to: ["authenticated"], using: sql`((user_id = auth.uid()) OR (EXISTS ( SELECT 1
    FROM app.calendar_events
-  WHERE ((calendar_events.created_by = auth.uid()) OR (calendar_events.id IN ( SELECT event_attendees_1.event_id
-           FROM app.event_attendees event_attendees_1
-          WHERE (event_attendees_1.user_id = auth.uid())))))) OR (EXISTS ( SELECT 1
-   FROM app.profiles
-  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text)))))` }),
-	pgPolicy("Users can manage their own event attendance", { as: "permissive", for: "update", to: ["authenticated"] }),
+  WHERE ((calendar_events.id = event_attendees.event_id) AND ((calendar_events.created_by = auth.uid()) OR app.is_member_of_project(calendar_events.project_id, auth.uid()) OR (EXISTS ( SELECT 1
+           FROM app.profiles
+          WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text)))))))))` }),
 	pgPolicy("Event creators and admins can manage event attendees", { as: "permissive", for: "all", to: ["authenticated"] }),
+	pgPolicy("Users can manage their own event attendance", { as: "permissive", for: "update", to: ["authenticated"] }),
 	check("event_attendees_response_check", sql`response = ANY (ARRAY['pending'::text, 'accepted'::text, 'declined'::text, 'tentative'::text])`),
 ]);
 
@@ -1232,18 +1224,10 @@ export const messagesInMessaging = messaging.table("messages", {
 			foreignColumns: [messageThreadsInMessaging.id],
 			name: "messages_thread_id_fkey"
 		}).onDelete("cascade"),
-	pgPolicy("Users can read messages in their threads", { as: "permissive", for: "select", to: ["authenticated"], using: sql`((thread_id IN ( SELECT message_threads.id
-   FROM messaging.message_threads
-  WHERE ((message_threads.project_id IN ( SELECT project_team.project_id
-           FROM app.project_team
-          WHERE (project_team.user_id = auth.uid()))) OR (message_threads.project_id IN ( SELECT projects.id
-           FROM app.projects
-          WHERE (projects.client_id = auth.uid())))))) OR (EXISTS ( SELECT 1
-   FROM app.profiles
-  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text)))))` }),
+	pgPolicy("Users can delete their own messages", { as: "permissive", for: "delete", to: ["authenticated"], using: sql`(sender_id = auth.uid())` }),
+	pgPolicy("Users can read messages in their threads", { as: "permissive", for: "select", to: ["authenticated"] }),
 	pgPolicy("Users can send messages in their threads", { as: "permissive", for: "insert", to: ["authenticated"] }),
 	pgPolicy("Users can update their own messages", { as: "permissive", for: "update", to: ["authenticated"] }),
-	pgPolicy("Users can delete their own messages", { as: "permissive", for: "delete", to: ["authenticated"] }),
 	check("messages_message_type_check", sql`message_type = ANY (ARRAY['text'::text, 'system'::text, 'file'::text])`),
 ]);
 

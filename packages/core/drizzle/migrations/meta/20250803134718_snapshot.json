@@ -4,118 +4,6 @@
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "auth.saml_providers": {
-      "name": "saml_providers",
-      "schema": "auth",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sso_provider_id": {
-          "name": "sso_provider_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "entity_id": {
-          "name": "entity_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "metadata_xml": {
-          "name": "metadata_xml",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "metadata_url": {
-          "name": "metadata_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "attribute_mapping": {
-          "name": "attribute_mapping",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "name_id_format": {
-          "name": "name_id_format",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "saml_providers_sso_provider_id_idx": {
-          "name": "saml_providers_sso_provider_id_idx",
-          "columns": [
-            {
-              "expression": "sso_provider_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "saml_providers_sso_provider_id_fkey": {
-          "name": "saml_providers_sso_provider_id_fkey",
-          "tableFrom": "saml_providers",
-          "tableTo": "sso_providers",
-          "schemaTo": "auth",
-          "columnsFrom": [
-            "sso_provider_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {
-        "entity_id not empty": {
-          "name": "entity_id not empty",
-          "value": "char_length(entity_id) > 0"
-        },
-        "metadata_url not empty": {
-          "name": "metadata_url not empty",
-          "value": "(metadata_url = NULL::text) OR (char_length(metadata_url) > 0)"
-        },
-        "metadata_xml not empty": {
-          "name": "metadata_xml not empty",
-          "value": "char_length(metadata_xml) > 0"
-        }
-      },
-      "policies": {},
-      "isRLSEnabled": true
-    },
     "auth.flow_state": {
       "name": "flow_state",
       "schema": "auth",
@@ -258,6 +146,118 @@
       "policies": {},
       "isRLSEnabled": true
     },
+    "auth.saml_providers": {
+      "name": "saml_providers",
+      "schema": "auth",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sso_provider_id": {
+          "name": "sso_provider_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata_xml": {
+          "name": "metadata_xml",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata_url": {
+          "name": "metadata_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "attribute_mapping": {
+          "name": "attribute_mapping",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name_id_format": {
+          "name": "name_id_format",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "saml_providers_sso_provider_id_idx": {
+          "name": "saml_providers_sso_provider_id_idx",
+          "columns": [
+            {
+              "expression": "sso_provider_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "saml_providers_sso_provider_id_fkey": {
+          "name": "saml_providers_sso_provider_id_fkey",
+          "tableFrom": "saml_providers",
+          "tableTo": "sso_providers",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "sso_provider_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "entity_id not empty": {
+          "name": "entity_id not empty",
+          "value": "char_length(entity_id) > 0"
+        },
+        "metadata_url not empty": {
+          "name": "metadata_url not empty",
+          "value": "(metadata_url = NULL::text) OR (char_length(metadata_url) > 0)"
+        },
+        "metadata_xml not empty": {
+          "name": "metadata_xml not empty",
+          "value": "char_length(metadata_xml) > 0"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": true
+    },
     "auth.instances": {
       "name": "instances",
       "schema": "auth",
@@ -298,6 +298,150 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": true
+    },
+    "auth.saml_relay_states": {
+      "name": "saml_relay_states",
+      "schema": "auth",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sso_provider_id": {
+          "name": "sso_provider_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "request_id": {
+          "name": "request_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "for_email": {
+          "name": "for_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "redirect_to": {
+          "name": "redirect_to",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "flow_state_id": {
+          "name": "flow_state_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "saml_relay_states_created_at_idx": {
+          "name": "saml_relay_states_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "saml_relay_states_for_email_idx": {
+          "name": "saml_relay_states_for_email_idx",
+          "columns": [
+            {
+              "expression": "for_email",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "saml_relay_states_sso_provider_id_idx": {
+          "name": "saml_relay_states_sso_provider_id_idx",
+          "columns": [
+            {
+              "expression": "sso_provider_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "saml_relay_states_flow_state_id_fkey": {
+          "name": "saml_relay_states_flow_state_id_fkey",
+          "tableFrom": "saml_relay_states",
+          "tableTo": "flow_state",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "flow_state_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "saml_relay_states_sso_provider_id_fkey": {
+          "name": "saml_relay_states_sso_provider_id_fkey",
+          "tableFrom": "saml_relay_states",
+          "tableTo": "sso_providers",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "sso_provider_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "request_id not empty": {
+          "name": "request_id not empty",
+          "value": "char_length(request_id) > 0"
+        }
+      },
       "policies": {},
       "isRLSEnabled": true
     },
@@ -475,150 +619,6 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {},
-      "policies": {},
-      "isRLSEnabled": true
-    },
-    "auth.saml_relay_states": {
-      "name": "saml_relay_states",
-      "schema": "auth",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sso_provider_id": {
-          "name": "sso_provider_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "request_id": {
-          "name": "request_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "for_email": {
-          "name": "for_email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "redirect_to": {
-          "name": "redirect_to",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "flow_state_id": {
-          "name": "flow_state_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "saml_relay_states_created_at_idx": {
-          "name": "saml_relay_states_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "asc": false,
-              "nulls": "first",
-              "opclass": "timestamptz_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "saml_relay_states_for_email_idx": {
-          "name": "saml_relay_states_for_email_idx",
-          "columns": [
-            {
-              "expression": "for_email",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "text_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "saml_relay_states_sso_provider_id_idx": {
-          "name": "saml_relay_states_sso_provider_id_idx",
-          "columns": [
-            {
-              "expression": "sso_provider_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "saml_relay_states_flow_state_id_fkey": {
-          "name": "saml_relay_states_flow_state_id_fkey",
-          "tableFrom": "saml_relay_states",
-          "tableTo": "flow_state",
-          "schemaTo": "auth",
-          "columnsFrom": [
-            "flow_state_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "saml_relay_states_sso_provider_id_fkey": {
-          "name": "saml_relay_states_sso_provider_id_fkey",
-          "tableFrom": "saml_relay_states",
-          "tableTo": "sso_providers",
-          "schemaTo": "auth",
-          "columnsFrom": [
-            "sso_provider_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {
-        "request_id not empty": {
-          "name": "request_id not empty",
-          "value": "char_length(request_id) > 0"
-        }
-      },
       "policies": {},
       "isRLSEnabled": true
     },
@@ -1874,6 +1874,65 @@
       "policies": {},
       "isRLSEnabled": true
     },
+    "auth.sso_providers": {
+      "name": "sso_providers",
+      "schema": "auth",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resource_id": {
+          "name": "resource_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "sso_providers_resource_id_idx": {
+          "name": "sso_providers_resource_id_idx",
+          "columns": [
+            {
+              "expression": "lower(resource_id)",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": true
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "resource_id not empty": {
+          "name": "resource_id not empty",
+          "value": "(resource_id = NULL::text) OR (char_length(resource_id) > 0)"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": true
+    },
     "auth.audit_log_entries": {
       "name": "audit_log_entries",
       "schema": "auth",
@@ -1932,65 +1991,6 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {},
-      "policies": {},
-      "isRLSEnabled": true
-    },
-    "auth.sso_providers": {
-      "name": "sso_providers",
-      "schema": "auth",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "resource_id": {
-          "name": "resource_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "sso_providers_resource_id_idx": {
-          "name": "sso_providers_resource_id_idx",
-          "columns": [
-            {
-              "expression": "lower(resource_id)",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "text_ops",
-              "isExpression": true
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {
-        "resource_id not empty": {
-          "name": "resource_id not empty",
-          "value": "(resource_id = NULL::text) OR (char_length(resource_id) > 0)"
-        }
-      },
       "policies": {},
       "isRLSEnabled": true
     },
@@ -2869,6 +2869,14 @@
           ],
           "withCheck": "(EXISTS ( SELECT 1\n   FROM app.profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = ANY (ARRAY['admin'::text, 'team_member'::text])))))"
         },
+        "Admins can delete projects": {
+          "name": "Admins can delete projects",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ]
+        },
         "Users can read projects they're assigned to or are clients of": {
           "name": "Users can read projects they're assigned to or are clients of",
           "as": "PERMISSIVE",
@@ -2881,14 +2889,6 @@
           "name": "Project team members and admins can update projects",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ]
-        },
-        "Admins can delete projects": {
-          "name": "Admins can delete projects",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
           "to": [
             "authenticated"
           ]
@@ -2985,19 +2985,19 @@
       },
       "checkConstraints": {},
       "policies": {
-        "Project team members and admins can manage project team": {
-          "name": "Project team members and admins can manage project team",
-          "as": "PERMISSIVE",
-          "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
-          "using": "((project_id IN ( SELECT DISTINCT pt2.project_id\n   FROM app.project_team pt2\n  WHERE (pt2.user_id = auth.uid()))) OR (EXISTS ( SELECT 1\n   FROM app.profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text)))))"
-        },
         "Users can read project team assignments": {
           "name": "Users can read project team assignments",
           "as": "PERMISSIVE",
           "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "((user_id = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM app.profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text)))))"
+        },
+        "Project team members and admins can manage project team": {
+          "name": "Project team members and admins can manage project team",
+          "as": "PERMISSIVE",
+          "for": "ALL",
           "to": [
             "authenticated"
           ]
@@ -3834,7 +3834,7 @@
           "to": [
             "authenticated"
           ],
-          "using": "((created_by = auth.uid()) OR (id IN ( SELECT event_attendees.event_id\n   FROM app.event_attendees\n  WHERE (event_attendees.user_id = auth.uid()))) OR (project_id IN ( SELECT project_team.project_id\n   FROM app.project_team\n  WHERE (project_team.user_id = auth.uid()))) OR (project_id IN ( SELECT projects.id\n   FROM app.projects\n  WHERE (projects.client_id = auth.uid()))) OR (EXISTS ( SELECT 1\n   FROM app.profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text)))))"
+          "using": "((created_by = auth.uid()) OR app.is_attendee_of_event(id, auth.uid()) OR app.is_member_of_project(project_id, auth.uid()) OR (EXISTS ( SELECT 1\n   FROM app.projects\n  WHERE ((projects.id = calendar_events.project_id) AND (projects.client_id = auth.uid())))) OR (EXISTS ( SELECT 1\n   FROM app.profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text)))))"
         },
         "Team members and admins can manage calendar events": {
           "name": "Team members and admins can manage calendar events",
@@ -3941,20 +3941,20 @@
           "to": [
             "authenticated"
           ],
-          "using": "((event_id IN ( SELECT calendar_events.id\n   FROM app.calendar_events\n  WHERE ((calendar_events.created_by = auth.uid()) OR (calendar_events.id IN ( SELECT event_attendees_1.event_id\n           FROM app.event_attendees event_attendees_1\n          WHERE (event_attendees_1.user_id = auth.uid())))))) OR (EXISTS ( SELECT 1\n   FROM app.profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text)))))"
-        },
-        "Users can manage their own event attendance": {
-          "name": "Users can manage their own event attendance",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ]
+          "using": "((user_id = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM app.calendar_events\n  WHERE ((calendar_events.id = event_attendees.event_id) AND ((calendar_events.created_by = auth.uid()) OR app.is_member_of_project(calendar_events.project_id, auth.uid()) OR (EXISTS ( SELECT 1\n           FROM app.profiles\n          WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text)))))))))"
         },
         "Event creators and admins can manage event attendees": {
           "name": "Event creators and admins can manage event attendees",
           "as": "PERMISSIVE",
           "for": "ALL",
+          "to": [
+            "authenticated"
+          ]
+        },
+        "Users can manage their own event attendance": {
+          "name": "Users can manage their own event attendance",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
           "to": [
             "authenticated"
           ]
@@ -6288,14 +6288,22 @@
         }
       },
       "policies": {
+        "Users can delete their own messages": {
+          "name": "Users can delete their own messages",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "(sender_id = auth.uid())"
+        },
         "Users can read messages in their threads": {
           "name": "Users can read messages in their threads",
           "as": "PERMISSIVE",
           "for": "SELECT",
           "to": [
             "authenticated"
-          ],
-          "using": "((thread_id IN ( SELECT message_threads.id\n   FROM messaging.message_threads\n  WHERE ((message_threads.project_id IN ( SELECT project_team.project_id\n           FROM app.project_team\n          WHERE (project_team.user_id = auth.uid()))) OR (message_threads.project_id IN ( SELECT projects.id\n           FROM app.projects\n          WHERE (projects.client_id = auth.uid())))))) OR (EXISTS ( SELECT 1\n   FROM app.profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text)))))"
+          ]
         },
         "Users can send messages in their threads": {
           "name": "Users can send messages in their threads",
@@ -6309,14 +6317,6 @@
           "name": "Users can update their own messages",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ]
-        },
-        "Users can delete their own messages": {
-          "name": "Users can delete their own messages",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
           "to": [
             "authenticated"
           ]
@@ -6700,9 +6700,9 @@
   },
   "schemas": {
     "auth": "auth",
-    "app": "app",
     "finance": "finance",
     "messaging": "messaging",
+    "app": "app",
     "audit": "audit"
   },
   "sequences": {},

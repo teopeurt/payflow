@@ -348,10 +348,11 @@ export class E2EWorkflowTest {
       // Step 3: Mark as read
       const step3Start = Date.now();
       const { error: readError } = await schemaClient.messaging
-        .message_read_status()
+        .message_recipients()
         .upsert({
-          thread_id: newThread.id,
+          message_id: newThread.id,
           user_id: this.userId,
+          read_status: true,
           read_at: new Date().toISOString()
         });
 

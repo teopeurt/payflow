@@ -46,6 +46,7 @@ export class SchemaClient {
       message_threads: () => this.client.schema('messaging').from('message_threads'),
       messages: () => this.client.schema('messaging').from('messages'),
       message_participants: () => this.client.schema('messaging').from('message_participants'),
+      message_recipients: () => this.client.schema('messaging').from('message_recipients'),
     };
   }
 

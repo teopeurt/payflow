@@ -7,7 +7,7 @@ export class DatabaseQueries {
   async getUserWithProfile(userId: string): Promise<UserWithProfile | null> {
     const { data: profile, error } = await this.db.app
       .profiles()
-      .select('*')
+        .select('*')
       .eq('id', userId)
       .single();
 
