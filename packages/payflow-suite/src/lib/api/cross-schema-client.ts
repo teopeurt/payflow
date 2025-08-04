@@ -1,5 +1,5 @@
 // Client for cross-schema API calls
-const API_BASE_URL = process.env.CROSS_SCHEMA_API_URL || 'http://localhost:3000/api/cross-schema';
+const API_BASE_URL = process.env.CROSS_SCHEMA_API_URL || 'https://d539yuu6hhr8z.cloudfront.net/api/cross-schema';
 
 export interface InvoiceWithRelations {
   id: string;
@@ -83,13 +83,31 @@ export interface ProjectWithRelations {
 
 export class CrossSchemaApiClient {
   private baseUrl: string;
+  private getToken?: () => Promise<string | null>;
 
-  constructor(baseUrl = API_BASE_URL) {
+  constructor(baseUrl = API_BASE_URL, tokenProvider?: () => Promise<string | null>) {
     this.baseUrl = baseUrl;
+    this.getToken = tokenProvider;
+  }
+
+  private async getAuthHeaders(): Promise<HeadersInit> {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    if (this.getToken) {
+      const token = await this.getToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
+    return headers;
   }
 
   async getInvoicesWithRelations(limit = 10): Promise<InvoiceWithRelations[]> {
-    const response = await fetch(`${this.baseUrl}/invoices?limit=${limit}`);
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.baseUrl}/invoices?limit=${limit}`, { headers });
     if (!response.ok) {
       throw new Error(`Failed to fetch invoices: ${response.statusText}`);
     }
@@ -97,7 +115,8 @@ export class CrossSchemaApiClient {
   }
 
   async getInvoiceWithItems(id: string): Promise<InvoiceWithRelations> {
-    const response = await fetch(`${this.baseUrl}/invoices/${id}`);
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.baseUrl}/invoices/${id}`, { headers });
     if (!response.ok) {
       throw new Error(`Failed to fetch invoice: ${response.statusText}`);
     }
@@ -105,7 +124,8 @@ export class CrossSchemaApiClient {
   }
 
   async getPaymentsWithInvoice(limit = 10): Promise<PaymentWithInvoice[]> {
-    const response = await fetch(`${this.baseUrl}/payments?limit=${limit}`);
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.baseUrl}/payments?limit=${limit}`, { headers });
     if (!response.ok) {
       throw new Error(`Failed to fetch payments: ${response.statusText}`);
     }
@@ -113,7 +133,8 @@ export class CrossSchemaApiClient {
   }
 
   async getOrganizationMembersWithDetails(limit = 10): Promise<OrganizationMemberWithDetails[]> {
-    const response = await fetch(`${this.baseUrl}/organization-members?limit=${limit}`);
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.baseUrl}/organization-members?limit=${limit}`, { headers });
     if (!response.ok) {
       throw new Error(`Failed to fetch organization members: ${response.statusText}`);
     }
@@ -121,7 +142,8 @@ export class CrossSchemaApiClient {
   }
 
   async getProjectsWithRelations(limit = 10): Promise<ProjectWithRelations[]> {
-    const response = await fetch(`${this.baseUrl}/projects?limit=${limit}`);
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.baseUrl}/projects?limit=${limit}`, { headers });
     if (!response.ok) {
       throw new Error(`Failed to fetch projects: ${response.statusText}`);
     }
@@ -129,5 +151,32 @@ export class CrossSchemaApiClient {
   }
 }
 
-// Export a default instance
-export const crossSchemaApi = new CrossSchemaApiClient();
+// Token provider function using Supabase
+async function getSupabaseToken(): Promise<string | null> {
+  // Import Supabase client dynamically to avoid circular dependencies
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseUrl = process.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('Supabase configuration missing for cross-schema API authentication');
+      return null;
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error || !session) {
+      return null;
+    }
+    
+    return session.access_token;
+  } catch (error) {
+    console.error('Error getting Supabase token:', error);
+    return null;
+  }
+}
+
+// Export a default instance with authentication
+export const crossSchemaApi = new CrossSchemaApiClient(API_BASE_URL, getSupabaseToken);

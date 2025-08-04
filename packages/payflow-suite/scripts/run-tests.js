@@ -35,6 +35,7 @@ const DEFAULT_CLIENT_EMAIL = 'client@example.com';
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const crossSchemaApiUrl = process.env.CROSS_SCHEMA_API_URL;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('❌ Missing Supabase configuration. Please check your environment files.');
@@ -171,6 +172,7 @@ async function runTests() {
   console.log(`${colors.bold}${colors.blue}Payflow Suite Migration Test Runner${colors.reset}`);
   console.log(`Admin Email: ${adminEmail}`);
   console.log(`Client Email: ${clientEmail}`);
+  console.log(`Cross-Schema API: ${crossSchemaApiUrl || 'Using default'}`);
   
   let totalPassed = 0;
   let totalFailed = 0;

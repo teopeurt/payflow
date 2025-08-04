@@ -1,5 +1,6 @@
 import { schemaClient } from '../database/schema-client';
 import { dbQueries } from '../database/queries';
+import { crossSchemaApi } from '../api/cross-schema-client';
 
 export interface TestResult {
   test: string;
@@ -98,13 +99,9 @@ export class MessagingPermissionsTest {
         .limit(1);
 
       if (!threads || threads.length === 0) {
-        // Get a project to associate with the thread
-        const { data: projects } = await schemaClient.app
-          .projects()
-          .select('id')
-          .limit(1);
-
-        const projectId = projects?.[0]?.id;
+        // Get a project with full details using cross-schema API
+        const projectsWithRelations = await crossSchemaApi.getProjectsWithRelations(1);
+        const projectId = projectsWithRelations?.[0]?.id;
 
         // Create a test thread
         const { data: newThread, error: threadError } = await schemaClient.messaging

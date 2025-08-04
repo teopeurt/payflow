@@ -7,11 +7,17 @@
     "update": "aws lambda update-function-code --zip-file fileb://lambda.zip --function-name hello",
     "deploy": "run-s build zip update"
   },
+  "dependencies": {
+    "hono": "^4.8.12",
+    "drizzle-orm": "^0.37.0",
+    "postgres": "^3.4.4",
+    "@payflow/core": "workspace:*",
+    "jsonwebtoken": "^9.0.2",
+    "@supabase/supabase-js": "^2.49.4"
+  },
   "devDependencies": {
     "esbuild": "^0.21.4",
-    "npm-run-all2": "^6.2.0"
-  },
-  "dependencies": {
-    "hono": "^4.8.12"
+    "npm-run-all2": "^6.2.0",
+    "@types/jsonwebtoken": "^9.0.6"
   }
 }

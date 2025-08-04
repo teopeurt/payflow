@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { authMiddleware } from '../middleware/auth';
 import {
   getInvoicesWithRelations,
   getInvoiceWithItems,
@@ -11,12 +12,14 @@ import {
 const app = new Hono();
 
 app.use('/*', cors());
+app.use('/*', authMiddleware);
 
 // Get invoices with organization, project, and client details
 app.get('/invoices', async (c) => {
   try {
+    const user = c.get('user');
     const limit = Number(c.req.query('limit')) || 10;
-    const invoices = await getInvoicesWithRelations(limit);
+    const invoices = await getInvoicesWithRelations(limit, user);
     return c.json(invoices);
   } catch (error) {
     console.error('Error fetching invoices:', error);
@@ -27,8 +30,9 @@ app.get('/invoices', async (c) => {
 // Get single invoice with all relations including items
 app.get('/invoices/:id', async (c) => {
   try {
+    const user = c.get('user');
     const id = c.req.param('id');
-    const invoice = await getInvoiceWithItems(id);
+    const invoice = await getInvoiceWithItems(id, user);
     
     if (!invoice) {
       return c.json({ error: 'Invoice not found' }, 404);
@@ -44,8 +48,9 @@ app.get('/invoices/:id', async (c) => {
 // Get payments with invoice and client information
 app.get('/payments', async (c) => {
   try {
+    const user = c.get('user');
     const limit = Number(c.req.query('limit')) || 10;
-    const payments = await getPaymentsWithInvoice(limit);
+    const payments = await getPaymentsWithInvoice(limit, user);
     return c.json(payments);
   } catch (error) {
     console.error('Error fetching payments:', error);
@@ -56,8 +61,9 @@ app.get('/payments', async (c) => {
 // Get organization members with organization and user details
 app.get('/organization-members', async (c) => {
   try {
+    const user = c.get('user');
     const limit = Number(c.req.query('limit')) || 10;
-    const members = await getOrganizationMembersWithDetails(limit);
+    const members = await getOrganizationMembersWithDetails(limit, user);
     return c.json(members);
   } catch (error) {
     console.error('Error fetching organization members:', error);
@@ -68,8 +74,9 @@ app.get('/organization-members', async (c) => {
 // Get projects with organization and client details
 app.get('/projects', async (c) => {
   try {
+    const user = c.get('user');
     const limit = Number(c.req.query('limit')) || 10;
-    const projects = await getProjectsWithRelations(limit);
+    const projects = await getProjectsWithRelations(limit, user);
     return c.json(projects);
   } catch (error) {
     console.error('Error fetching projects:', error);

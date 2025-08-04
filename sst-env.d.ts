@@ -13,12 +13,29 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
+    "HonoServerApp": {
+      "name": string
+      "type": "sst.aws.Function"
+      "url": string
+    }
+    "HonoServerUrl": {
+      "type": "sst.aws.Router"
+      "url": string
+    }
     "MyBucket": {
       "name": string
       "type": "sst.aws.Bucket"
     }
     "PayflowVpc": {
       "type": "sst.aws.Vpc"
+    }
+    "SUPABASE_ANON_KEY": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "SUPABASE_URL": {
+      "type": "sst.sst.Secret"
+      "value": string
     }
   }
 }

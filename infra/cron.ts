@@ -19,9 +19,9 @@ export const RecurringInvoiceTask = new sst.aws.Task("RecurringInvoiceTask", {
 });
 
 // This cron job triggers the RecurringInvoiceTask to run daily.
-export const RecurringInvoiceSchedule = new sst.aws.Cron("RecurringInvoiceSchedule", {
-  schedule: "cron(0 6 * * ? *)", // 6:00 AM UTC daily
-  job: {
-    task: RecurringInvoiceTask,
-  },
-});
+// export const RecurringInvoiceSchedule = new sst.aws.Cron("RecurringInvoiceSchedule", {
+//   schedule: "cron(0 6 * * ? *)", // 6:00 AM UTC daily
+//   job: {
+//     task: RecurringInvoiceTask,
+//   },
+// });

@@ -1,5 +1,6 @@
 import { schemaClient } from '../database/schema-client';
 import { dbQueries } from '../database/queries';
+import { crossSchemaApi } from '../api/cross-schema-client';
 
 export interface E2ETestResult {
   workflow: string;
@@ -49,17 +50,20 @@ export class E2EWorkflowTest {
       // Step 1: Admin accesses dashboard
       const startTime = Date.now();
       
-      const { data: dashboardData, error: dashError } = await Promise.all([
+      // Use cross-schema API for enhanced dashboard data with relationships
+      const [projects, invoicesWithRelations, paymentsWithInvoice] = await Promise.all([
         schemaClient.app.projects().select('*').limit(5),
-        schemaClient.finance.invoices().select('*').limit(5),
-        schemaClient.finance.payments().select('*').limit(5)
-      ]).then(([projects, invoices, payments]) => ({
-        projects: projects.data,
-        invoices: invoices.data,
-        payments: payments.data
-      })).catch(err => ({ error: err }));
+        crossSchemaApi.getInvoicesWithRelations(5),
+        crossSchemaApi.getPaymentsWithInvoice(5)
+      ]);
 
-      if (dashError) throw dashError;
+      const dashboardData = {
+        projects: projects.data,
+        invoices: invoicesWithRelations,
+        payments: paymentsWithInvoice
+      };
+
+      if (projects.error) throw projects.error;
 
       results.push({
         workflow: workflowName,
