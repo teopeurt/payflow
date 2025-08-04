@@ -36,15 +36,28 @@ export const authMiddleware = async (c: Context, next: Next) => {
   const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
   try {
+    // Create a new Supabase client with the user's token for authenticated queries
+    const authenticatedSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    });
+    
     // Verify JWT token with Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    const { data: { user }, error } = await authenticatedSupabase.auth.getUser();
     
     if (error || !user) {
       return c.json({ error: 'Invalid or expired token' }, 401);
     }
 
-    // Get user profile from database
-    const { data: profile, error: profileError } = await supabase
+    // Get user profile from database using authenticated client
+    const { data: profile, error: profileError } = await authenticatedSupabase
       .schema('app')
       .from('profiles')
       .select('id, email, full_name')
@@ -56,7 +69,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
     }
 
     // Get organization membership separately
-    const { data: orgMembers, error: orgError } = await supabase
+    const { data: orgMembers, error: orgError } = await authenticatedSupabase
       .schema('app')
       .from('organization_members')
       .select('role, organization_id, is_primary')

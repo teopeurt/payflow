@@ -5,6 +5,7 @@
   "dependencies": {
     "@payflow/core": "workspace:*",
     "install": "^0.13.0",
+    "jsonwebtoken": "^9.0.2",
     "sst": "*",
     "uuid": "^11.1.0"
   },

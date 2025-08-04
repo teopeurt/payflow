@@ -21,4 +21,23 @@ export const honoServerUrl = new sst.aws.Router("HonoServerUrl", {
   routes: {
     "/api/cross-schema/*": honoServerApp.url,
   },
+  transform: {
+    origin: {
+      responseHeadersPolicy: {
+        corsConfig: {
+          accessControlAllowCredentials: false,
+          accessControlAllowHeaders: {
+            items: ["*"]
+          },
+          accessControlAllowMethods: {
+            items: ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+          },
+          accessControlAllowOrigins: {
+            items: ["*"]
+          },
+          originOverride: true
+        }
+      }
+    }
+  }
 });

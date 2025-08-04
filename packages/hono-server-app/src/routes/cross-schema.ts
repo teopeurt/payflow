@@ -1,17 +1,19 @@
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware } from '../middleware/auth-optimized';
 import {
   getInvoicesWithRelations,
   getInvoiceWithItems,
   getPaymentsWithInvoice,
   getOrganizationMembersWithDetails,
   getProjectsWithRelations,
+  getMessageThreadsWithRelations,
+  getMessagesForThread,
+  createMessage,
 } from '../queries/cross-schema';
 
 const app = new Hono();
 
-app.use('/*', cors());
+
 app.use('/*', authMiddleware);
 
 // Get invoices with organization, project, and client details
@@ -81,6 +83,69 @@ app.get('/projects', async (c) => {
   } catch (error) {
     console.error('Error fetching projects:', error);
     return c.json({ error: 'Failed to fetch projects' }, 500);
+  }
+});
+
+// Get message threads with creator and project details
+app.get('/message-threads', async (c) => {
+  try {
+    const user = c.get('user');
+    const limit = Number(c.req.query('limit')) || 10;
+    const threads = await getMessageThreadsWithRelations(limit, user);
+    return c.json(threads);
+  } catch (error) {
+    console.error('Error fetching message threads:', error);
+    return c.json({ error: 'Failed to fetch message threads' }, 500);
+  }
+});
+
+// Get messages for a specific thread with sender details
+app.get('/messages/:threadId', async (c) => {
+  try {
+    const user = c.get('user');
+    const threadId = c.req.param('threadId');
+    const messages = await getMessagesForThread(threadId, user);
+    return c.json(messages);
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    return c.json({ error: 'Failed to fetch messages' }, 500);
+  }
+});
+
+// Create a new message in a thread
+app.post('/messages', async (c) => {
+  try {
+    const user = c.get('user');
+    
+    if (!user?.userId) {
+      return c.json({ error: 'Authentication required' }, 401);
+    }
+
+    const body = await c.req.json();
+    const { threadId, content } = body;
+
+    if (!threadId || !content?.trim()) {
+      return c.json({ error: 'Thread ID and message content are required' }, 400);
+    }
+
+    console.log('Creating message:', {
+      threadId,
+      senderId: user.userId,
+      contentLength: content.length,
+      userRole: user.role
+    });
+
+    const message = await createMessage(threadId, content.trim(), user.userId, user);
+
+    if (!message) {
+      return c.json({ error: 'Failed to create message or access denied' }, 403);
+    }
+
+    console.log('Message created successfully:', message.id);
+    return c.json(message, 201);
+  } catch (error) {
+    console.error('Error creating message:', error);
+    return c.json({ error: 'Failed to create message' }, 500);
   }
 });
 

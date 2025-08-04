@@ -11,42 +11,27 @@ import {
   Clock
 } from 'lucide-react';
 import { useAuth } from '@payflow/core/auth';
-import { schemaClient } from '@/lib/database';
 import { dbQueries } from '@/lib/database';
+import { getSupabase } from '@payflow/core/integrations/supabase/client';
+import { crossSchemaApi, MessageThreadWithRelations, MessageWithSender } from '@/lib/api/cross-schema-client';
 import { format } from 'date-fns';
 
-interface MessageThread {
-  id: string;
-  subject: string;
-  created_at: string;
-  updated_at: string;
-  created_by: string;
-  project_id?: string;
-  status: string;
-  creator?: { full_name: string };
-  project?: { name: string };
+// Use the cross-schema API types directly
+type MessageThread = MessageThreadWithRelations & {
   unread_count?: number;
   last_message?: {
     content: string;
-    created_at: string;
-    sender: { full_name: string };
+    createdAt: string;
+    sender: { fullName: string };
   };
-}
+};
 
-interface Message {
-  id: string;
-  thread_id: string;
-  sender_id: string;
-  content: string;
-  message_type: string;
-  created_at: string;
-  is_deleted: boolean;
-  sender?: { full_name: string };
+type Message = MessageWithSender & {
   read_by?: Array<{
     user_id: string;
     read_at: string;
   }>;
-}
+};
 
 const MessageList: React.FC = () => {
   const { profile } = useAuth();
@@ -56,8 +41,10 @@ const MessageList: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [realtimeSubscription, setRealtimeSubscription] = useState<any>(null);
+  const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -70,10 +57,10 @@ const MessageList: React.FC = () => {
   }, [profile]);
 
   useEffect(() => {
-    if (profile?.id) {
+    if (profile?.id && !hasAttemptedFetch) {
       fetchThreads();
     }
-  }, [profile]);
+  }, [profile?.id, hasAttemptedFetch]);
 
   useEffect(() => {
     if (selectedThread) {
@@ -90,47 +77,35 @@ const MessageList: React.FC = () => {
   }, [selectedThread]);
 
   const fetchThreads = async () => {
+    setHasAttemptedFetch(true);
+    setError(null);
+    
     try {
-      const { data, error } = await schemaClient.messaging
-        .message_threads()
-        .select(`
-          *,
-          creator:profiles!message_threads_created_by_fkey(full_name),
-          project:projects(name)
-        `)
-        .order('updated_at', { ascending: false });
-
-      if (error) throw error;
-      setThreads(data || []);
+      const threads = await crossSchemaApi.getMessageThreadsWithRelations(20);
+      setThreads(threads);
       
       // Select first thread by default
-      if (data && data.length > 0 && !selectedThread) {
-        setSelectedThread(data[0]);
+      if (threads && threads.length > 0 && !selectedThread) {
+        setSelectedThread(threads[0]);
       }
     } catch (error) {
       console.error('Error fetching threads:', error);
+      setError('Failed to load message threads. Please check your connection.');
     } finally {
       setLoading(false);
     }
   };
 
   const fetchMessages = async (threadId: string) => {
+    console.log('🔍 fetchMessages called for thread ID:', threadId);
     try {
-      const { data, error } = await schemaClient.messaging
-        .messages()
-        .select(`
-          *,
-          sender:profiles!messages_sender_id_fkey(full_name),
-          read_by:message_recipients(user_id, read_at)
-        `)
-        .eq('thread_id', threadId)
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setMessages(data || []);
+      const messages = await crossSchemaApi.getMessagesForThread(threadId);
+      console.log('✅ fetchMessages success - received', messages.length, 'messages');
+      console.log('📄 First few messages:', messages.slice(0, 2));
+      setMessages(messages);
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error('❌ Error fetching messages:', error);
+      // Don't show error for individual message fetching, just fail silently
     }
   };
 
@@ -138,17 +113,10 @@ const MessageList: React.FC = () => {
     if (!profile?.id) return;
     
     try {
-      // Mark all unread messages in this thread as read
-      const { error } = await schemaClient.messaging
-        .message_recipients()
-        .upsert({
-          message_id: threadId,
-          user_id: profile.id,
-          read_status: true,
-          read_at: new Date().toISOString()
-        });
-
-      if (error) throw error;
+      // For now, skip the marking as read functionality since we're using cross-schema API
+      // This would need to be implemented as a server endpoint to properly handle
+      // marking all messages in a thread as read
+      console.log('Marking thread as read:', threadId);
     } catch (error) {
       console.error('Error marking thread as read:', error);
     }
@@ -160,66 +128,60 @@ const MessageList: React.FC = () => {
       realtimeSubscription.unsubscribe();
     }
 
-    // Subscribe to new messages in this thread
-    const subscription = schemaClient
-      .channel(`messages:${threadId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'messaging',
-          table: 'messages',
-          filter: `thread_id=eq.${threadId}`
-        },
-        (payload) => {
-          const newMessage = payload.new as Message;
-          setMessages(prev => [...prev, newMessage]);
-          
-          // Fetch complete message with sender info
-          fetchMessages(threadId);
-        }
-      )
-      .subscribe();
+    try {
+      // Get the Supabase client for realtime subscriptions
+      const supabase = getSupabase();
+      
+      // Subscribe to new messages in this thread
+      const subscription = supabase
+        .channel(`messages:${threadId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'messaging',
+            table: 'messages',
+            filter: `thread_id=eq.${threadId}`
+          },
+          (payload) => {
+            console.log('New message received:', payload);
+            // Fetch complete message with sender info from cross-schema API
+            fetchMessages(threadId);
+          }
+        )
+        .subscribe();
 
-    setRealtimeSubscription(subscription);
+      setRealtimeSubscription(subscription);
+    } catch (error) {
+      console.error('Error setting up realtime subscription:', error);
+    }
   };
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedThread || !profile) return;
 
     try {
-      const messageData = {
-        thread_id: selectedThread.id,
-        sender_id: profile.id,
-        content: newMessage.trim(),
-        message_type: 'text',
-        created_at: new Date().toISOString()
-      };
+      console.log('Sending message via cross-schema API:', {
+        threadId: selectedThread.id,
+        content: newMessage.trim()
+      });
 
-      const { error } = await schemaClient.messaging
-        .messages()
-        .insert([messageData]);
+      const message = await crossSchemaApi.createMessage(selectedThread.id, newMessage.trim());
+      console.log('Message sent successfully:', message.id);
 
-      if (error) throw error;
-      
-      // Update thread's updated_at timestamp
-      await schemaClient.messaging
-        .message_threads()
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', selectedThread.id);
-      
+      // Clear the input
       setNewMessage('');
       
-      // Real-time subscription will handle adding the message to the UI
-      // But we'll also refresh threads to update the "last message" preview
-      fetchThreads();
+      // Refresh messages to show the new message
+      fetchMessages(selectedThread.id);
     } catch (error) {
       console.error('Error sending message:', error);
+      // Could add user-facing error handling here
     }
   };
 
   const isMessageRead = (message: Message): boolean => {
-    if (!profile?.id || message.sender_id === profile.id) return true;
+    if (!profile?.id || message.sender?.id === profile.id) return true;
     return message.read_by?.some(read => read.user_id === profile.id) || false;
   };
 
@@ -227,10 +189,32 @@ const MessageList: React.FC = () => {
     thread.subject.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) {
+  const retryFetch = () => {
+    setHasAttemptedFetch(false);
+    setLoading(true);
+    setError(null);
+  };
+
+  if (loading && !hasAttemptedFetch) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="text-red-600 mb-4">{error}</div>
+          <button 
+            onClick={retryFetch}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -294,20 +278,20 @@ const MessageList: React.FC = () => {
                         </span>
                       )}
                       <span className="text-xs text-gray-500">
-                        {format(new Date(thread.updated_at), 'MMM d')}
+                        {format(new Date(thread.updatedAt), 'MMM d')}
                       </span>
                     </div>
                   </div>
                   <p className="text-sm text-gray-600 truncate">
-                    {(thread.project as any)?.name || 'General Discussion'}
+                    {thread.project?.name || 'General Discussion'}
                   </p>
                   {thread.last_message ? (
                     <p className="text-xs text-gray-500 mt-1 truncate">
-                      <span className="font-medium">{thread.last_message.sender.full_name}:</span> {thread.last_message.content}
+                      <span className="font-medium">{thread.last_message.sender.fullName}:</span> {thread.last_message.content}
                     </p>
                   ) : (
                     <p className="text-xs text-gray-500 mt-1">
-                      by {(thread.creator as any)?.full_name}
+                      by {thread.creator?.fullName}
                     </p>
                   )}
                 </div>
@@ -329,7 +313,7 @@ const MessageList: React.FC = () => {
                     {selectedThread.subject}
                   </h3>
                   <p className="text-sm text-gray-500">
-                    Project: {(selectedThread.project as any)?.name || 'General'}
+                    Project: {selectedThread.project?.name || 'General'}
                   </p>
                 </div>
                 <button className="p-2 text-gray-400 hover:text-gray-600">
@@ -344,12 +328,12 @@ const MessageList: React.FC = () => {
                 <div
                   key={message.id}
                   className={`flex ${
-                    message.sender_id === profile?.id ? 'justify-end' : 'justify-start'
+                    message.sender?.id === profile?.id ? 'justify-end' : 'justify-start'
                   }`}
                 >
                   <div
                     className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                      message.sender_id === profile?.id
+                      message.sender?.id === profile?.id
                         ? 'bg-blue-600 text-white'
                         : 'bg-gray-100 text-gray-900'
                     }`}
@@ -357,7 +341,7 @@ const MessageList: React.FC = () => {
                     <div className="flex items-center space-x-2 mb-1">
                       <User className="h-3 w-3" />
                       <span className="text-xs font-medium">
-                        {(message.sender as any)?.full_name}
+                        {message.sender?.fullName}
                       </span>
                     </div>
                     <p className="text-sm">{message.content}</p>
@@ -365,10 +349,10 @@ const MessageList: React.FC = () => {
                       <div className="flex items-center space-x-1">
                         <Clock className="h-3 w-3 opacity-70" />
                         <span className="text-xs opacity-70">
-                          {format(new Date(message.created_at), 'MMM d, h:mm a')}
+                          {format(new Date(message.createdAt), 'MMM d, h:mm a')}
                         </span>
                       </div>
-                      {message.sender_id === profile?.id && (
+                      {message.sender?.id === profile?.id && (
                         <div className="flex items-center space-x-1">
                           {isMessageRead(message) ? (
                             <div className="w-2 h-2 bg-green-400 rounded-full" title="Read" />

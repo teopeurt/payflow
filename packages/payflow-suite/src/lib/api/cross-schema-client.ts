@@ -1,5 +1,8 @@
 // Client for cross-schema API calls
-const API_BASE_URL = process.env.CROSS_SCHEMA_API_URL || 'https://d539yuu6hhr8z.cloudfront.net/api/cross-schema';
+// Use import.meta.env for Vite applications (browser environment)
+const API_BASE_URL = (typeof window !== 'undefined' && import.meta.env?.VITE_CROSS_SCHEMA_API_URL) || 
+                    (typeof process !== 'undefined' && process.env?.CROSS_SCHEMA_API_URL) || 
+                    'https://d539yuu6hhr8z.cloudfront.net/api/cross-schema';
 
 export interface InvoiceWithRelations {
   id: string;
@@ -81,6 +84,37 @@ export interface ProjectWithRelations {
   };
 }
 
+export interface MessageThreadWithRelations {
+  id: string;
+  subject: string;
+  createdAt: string;
+  updatedAt: string;
+  creator?: {
+    id: string;
+    fullName: string;
+    email: string;
+  };
+  project?: {
+    id: string;
+    name: string;
+    status: string;
+  };
+}
+
+export interface MessageWithSender {
+  id: string;
+  threadId: string;
+  content: string;
+  messageType: string;
+  createdAt: string;
+  isDeleted: boolean;
+  sender?: {
+    id: string;
+    fullName: string;
+    email: string;
+  };
+}
+
 export class CrossSchemaApiClient {
   private baseUrl: string;
   private getToken?: () => Promise<string | null>;
@@ -149,28 +183,61 @@ export class CrossSchemaApiClient {
     }
     return response.json();
   }
+
+  async getMessageThreadsWithRelations(limit = 10): Promise<MessageThreadWithRelations[]> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.baseUrl}/message-threads?limit=${limit}`, { headers });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch message threads: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  async getMessagesForThread(threadId: string): Promise<MessageWithSender[]> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.baseUrl}/messages/${threadId}`, { headers });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch messages: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  async createMessage(threadId: string, content: string): Promise<MessageWithSender> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.baseUrl}/messages`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ threadId, content }),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create message: ${response.statusText} - ${errorText}`);
+    }
+    return response.json();
+  }
 }
 
-// Token provider function using Supabase
+// Token provider function using the shared Supabase client
 async function getSupabaseToken(): Promise<string | null> {
-  // Import Supabase client dynamically to avoid circular dependencies
   try {
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabaseUrl = process.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
+    console.log('getSupabaseToken: Attempting to get token...');
     
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.warn('Supabase configuration missing for cross-schema API authentication');
-      return null;
-    }
+    // Use the shared Supabase client instance
+    const { getSupabase } = await import('@payflow/core/integrations/supabase/client');
+    console.log('getSupabaseToken: Successfully imported getSupabase');
     
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = getSupabase();
+    console.log('getSupabaseToken: Got Supabase client');
+    
     const { data: { session }, error } = await supabase.auth.getSession();
+    console.log('getSupabaseToken: Session data:', { hasSession: !!session, error });
     
     if (error || !session) {
+      console.warn('No valid Supabase session for cross-schema API authentication', { error, hasSession: !!session });
       return null;
     }
     
+    console.log('getSupabaseToken: Successfully got access token');
     return session.access_token;
   } catch (error) {
     console.error('Error getting Supabase token:', error);
