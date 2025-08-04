@@ -12,6 +12,7 @@
       "./src/*.tsx",
       "./src/*.ts"
     ],
+    "./db/schema": "./src/db/schema.ts",
     "./integrations/supabase/client": "./src/integrations/supabase/client.ts"
   },
   "dependencies": {

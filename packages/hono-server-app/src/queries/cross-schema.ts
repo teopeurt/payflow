@@ -8,7 +8,7 @@ import {
   projectsInApp,
   organizationMembersInApp,
   invoiceItemsInFinance
-} from '@payflow/core/src/db/schema';
+} from '@payflow/core/db/schema';
 
 // Type definitions for the API responses
 export interface InvoiceWithRelations {

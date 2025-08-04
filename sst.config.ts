@@ -10,18 +10,16 @@ export default $config({
     };
   },
   async run() {
+    await import("./infra/network");
     const storage = await import("./infra/storage");
-    await import("./infra/api");
+    // await import("./infra/api");
     const cron = await import("./infra/cron");
     const honoServer = await import("./infra/hono-server");
 
     return {
       MyBucket: storage.bucket.name,
-      RecurringInvoiceProcessor: cron.recurringInvoiceProcessor.arn,
-      RecurringInvoiceCron: cron.recurringInvoiceCron.name,
-      ManualProcessorUrl: cron.manualInvoiceProcessor.url,
-      RecurringInvoiceTask: cron.recurringInvoiceTask.service,
-      RecurringInvoiceBatch: cron.recurringInvoiceBatch.name,
+      RecurringInvoiceSchedule: cron.RecurringInvoiceSchedule.urn,
+      RecurringInvoiceTask: cron.RecurringInvoiceTask.taskDefinition,
       HonoServerApp: honoServer.honoServerApp.url,
       HonoServerUrl: honoServer.honoServerUrl.url,
     };
