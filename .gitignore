@@ -16,3 +16,9 @@ node_modules
 
 # misc
 .DS_Store
+
+# opencode / supabase local state
+.opencode/
+.env.*
+!.env.example
+packages/web-app/supabase/.temp/
