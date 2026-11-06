@@ -1,81 +1,55 @@
-# Monorepo Template
+# PayFlow
 
-A template to create a monorepo SST v3 project. [Learn more](https://sst.dev/docs/set-up-a-monorepo).
+PayFlow is a business-management web app for invoicing and payments. It handles clients, projects, quotes, estimates, invoices, payments and documents. It's built as a Bun/npm-workspaces monorepo on the [SST v3](https://sst.dev) template and deploys to AWS.
 
-## Get started
+## Layout
 
-1. Use this template to [create your own repo](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+- `packages/web-app/` is the main product, a React + TypeScript + Vite frontend.
+  - Tailwind and shadcn/ui for styling, react-hook-form with zod for forms, TanStack Query for server state.
+  - Supabase is the backend. The `supabase/` folder holds `config.toml` and migrations, and there is a `docker-compose.yml`.
+  - Pages cover Auth, Dashboard, Clients, Projects, Quotes, Estimates, Invoices, Payments, Documents, Profile and Settings. Most entities have New, Edit and Details views.
+  - Other features include PDF preview, file upload, status badges and shared UI components.
+- `packages/core/` holds shared code, written as modules and tested with Vitest through `sst shell`.
+- `packages/functions/` holds AWS Lambda handlers. `infra/api.ts` defines the `MyApi` function, which has a public URL and is linked to the bucket.
+- `packages/scripts/` holds utility scripts.
+- `infra/` and `sst.config.ts` define the SST/AWS infrastructure: an S3 bucket and the API function. The app is retained and protected on the `production` stage.
+- `OpenCode.md` and `.opencode/` configure the OpenCode AI coding tool, including build/test commands and the code style guide.
 
-2. Clone the new repo.
+## Getting started
 
-   ```bash
-   git clone <REPO_URL> MY_APP
-   cd MY_APP
-   ```
+```bash
+bun install
+```
 
-3. Rename the files in the project to the name of your app.
+Run the web app:
 
-   ```bash
-   npx replace-in-file '/monorepo-template/g' 'MY_APP' '**/*.*' --verbose
-   ```
+```bash
+cd packages/web-app && bun run dev
+```
 
-4. Deploy!
+Other web-app commands:
 
-   ```bash
-   npm install
-   npx sst deploy
-   ```
+```bash
+cd packages/web-app && bun run build
+cd packages/web-app && bun run lint
+```
 
-5. Optionally, enable [_git push to deploy_](https://sst.dev/docs/console/#autodeploy).
+Run the core tests:
 
-## Usage
+```bash
+cd packages/core && bun run test
+```
 
-This template uses [npm Workspaces](https://docs.npmjs.com/cli/v8/using-npm/workspaces). It has 3 packages to start with and you can add more it.
+Deploy the infrastructure:
 
-1. `core/`
+```bash
+npx sst deploy
+```
 
-   This is for any shared code. It's defined as modules. For example, there's the `Example` module.
+## Status
 
-   ```ts
-   export module Example {
-     export function hello() {
-       return "Hello, world!";
-     }
-   }
-   ```
+The frontend has the most work in it. The SST backend is still mostly template scaffolding, and the SST app name is still `monorepo-template`.
 
-   That you can use across other packages using.
+## License
 
-   ```ts
-   import { Example } from "@aws-monorepo/core/example";
-
-   Example.hello();
-   ```
-
-   We also have [Vitest](https://vitest.dev/) configured for testing this package with the `sst shell` CLI.
-
-   ```bash
-   npm test
-   ```
-
-2. `functions/`
-
-   This is for your Lambda functions and it uses the `core` package as a local dependency.
-
-3. `scripts/`
-
-    This is for any scripts that you can run on your SST app using the `sst shell` CLI and [`tsx`](https://www.npmjs.com/package/tsx). For example, you can run the example script using:
-
-   ```bash
-   npm run shell src/example.ts
-   ```
-
-### Infrastructure
-
-The `infra/` directory allows you to logically split the infrastructure of your app into separate files. This can be helpful as your app grows.
-
-In the template, we have an `api.ts`, and `storage.ts`. These export the created resources. And are imported in the `sst.config.ts`.
-
----
-
-**Join our community** [Discord](https://sst.dev/discord) | [YouTube](https://www.youtube.com/c/sst-dev) | [X.com](https://x.com/SST_dev)
+See [LICENSE](LICENSE).
